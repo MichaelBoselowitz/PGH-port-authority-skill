@@ -1,0 +1,47 @@
+{
+  "intents": [
+    {
+      "intent": "OneshotBusIntent",
+      "slots": [
+        {
+          "name": "StationName",
+          "type": "LITERAL"
+        },
+        {
+          "name": "Direction",
+          "type": "LITERAL"
+        },
+        {
+          "name": "BusLine",
+          "type": "LITERAL"
+        }
+      ]
+    },
+    {
+      "intent": "DirectionBusIntent",
+      "slots": [
+        {
+          "name": "Direction",
+          "type": "LITERAL"
+        }
+      ]
+    },
+     {
+      "intent": "BusLineBusIntent",
+      "slots": [
+        {
+          "name": "BusLine",
+          "type": "LITERAL"
+        }
+      ]
+    },
+ {
+      "intent": "StationBusIntent",
+      "slots": [
+        {
+          "name": "StationName",
+          "type": "LITERAL"
+        }
+      ]
+    }
+  ]}

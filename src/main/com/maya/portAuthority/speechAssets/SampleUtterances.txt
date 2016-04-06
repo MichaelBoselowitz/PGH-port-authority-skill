@@ -1,0 +1,9 @@
+OneshotBusIntent when is 
+OneshotBusIntent when is the next bus
+OneshotBusIntent bus information
+
+OneshotBusIntent when is the {outbound|Direction} {p one| BusLine} from {smithfield|StationName}
+
+DirectionBusIntent {outbound|Direction}
+BusLineBusIntent {p one|BusLine}
+StationBusIntent {smithfield|StationName}
