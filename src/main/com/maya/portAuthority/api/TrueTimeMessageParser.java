@@ -1,5 +1,7 @@
 package com.maya.portAuthority.api;
 
+//import GetNextBusSpeechlet;
+
 import java.io.IOException;
 import java.util.List;
 
@@ -7,13 +9,16 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
-public class TrueTimePredictionParser extends BaseAPIParser {
+public class TrueTimeMessageParser extends BaseAPIParser {
+	private static  Logger LOGGER = LoggerFactory.getLogger(TrueTimeMessageParser.class);
                   
-  public TrueTimePredictionParser(String urlString) {
+  public TrueTimeMessageParser(String urlString) {
 		super(urlString);
-		// TODO Auto-generated constructor stub
+		LOGGER.info("constructor");
 	}
 
   public List<Message> parse() 

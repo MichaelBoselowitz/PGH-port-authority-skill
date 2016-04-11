@@ -22,6 +22,11 @@ public class TrueTimeHandler extends DefaultHandler {
     	   return messageList;
        }
        
+       public TrueTimeHandler(){
+    	   super();
+    	   LOGGER.info("constructor");
+       }
+       
        /*
         * When the parser encounters plain text (not XML elements),
         * it calls(this method, which accumulates them in a string buffer
@@ -37,13 +42,17 @@ public class TrueTimeHandler extends DefaultHandler {
         */ 
        public void startElement(String uri, String localName,
                      String qName, Attributes attributes) throws SAXException {
-    	   LOGGER.debug("startElement:"+uri+","+localName+","+qName);
+    	   LOGGER.trace("startElement:"+uri+","+localName+","+qName);
               temp = "";
-              if (qName.equalsIgnoreCase(Message.PREDICTION)) {
+              if (qName.equalsIgnoreCase(Message.PREDICTION)||
+            		  qName.equalsIgnoreCase(Message.STOP)||
+            		  qName.equalsIgnoreCase(Message.ERROR)) {
           		
                      message = new Message();
                      //acct.setType(attributes.getValue("type"));
 
+              
+            	  
               }
        }
 
@@ -52,9 +61,9 @@ public class TrueTimeHandler extends DefaultHandler {
         */
        public void endElement(String uri, String localName, String qName)
     		   throws SAXException {
-    	   LOGGER.debug("endElement="+uri+","+localName+","+qName);
+    	   LOGGER.trace("endElement="+uri+","+localName+","+qName+","+temp);
+
     	   if (qName.equalsIgnoreCase(Message.PREDICTION)) {
-    		   // TODO: calculate time estimate
     		   // message.setEstimate(message.getPredictionTime()-message.getTimestamp());
     		   DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyymmdd HH:mm");
     		   DateTime predTime = formatter.parseDateTime(message.getPredictionTime());
@@ -64,38 +73,45 @@ public class TrueTimeHandler extends DefaultHandler {
     		   message.setEstimate(ETA);
     		   // add it to the list
     		   messageList.add(message);
-    	   } else if (qName.equalsIgnoreCase(Message.TIMESTAMP)) {
-    		   LOGGER.warn("endElement:timestamp="+temp);
-    		   message.setTimestamp(temp);
-    	   } else if (qName.equalsIgnoreCase(Message.PREDICTION_TIME)) {
-    		   LOGGER.warn("endElement:predictionTime="+temp);
-    		   message.setPredictionTime(temp);
-    	   } else if (qName.equalsIgnoreCase(Message.TYPE)) {
-    		   message.setType(temp);
-    	   } else if (qName.equalsIgnoreCase(Message.STOP_ID)) {
-    		   //    		   TODO: message.setStopID(stopID);  
-    	   } else if (qName.equalsIgnoreCase(Message.STOP_NAME)) {
-    		   message.setStopName(temp);  
-    	   } else if (qName.equalsIgnoreCase(Message.VEHICLE_ID)) {
-    		   //    		   TODO: message.setVehicleID(VID);
-    	   } else if (qName.equalsIgnoreCase(Message.DISTANCE_TO_STOP)) {
-    		   //    		   TODO: message.setDistanceToStop(distanceToStop);
-    	   } else if (qName.equalsIgnoreCase(Message.ROUTE)) {
-    		   message.setRoute(temp);
-    	   } else if (qName.equalsIgnoreCase(Message.DIRECTION)) {
-    		   message.setDirection(temp);
-    	   } else if (qName.equalsIgnoreCase(Message.DESTINATION)) {
-    		   message.setDestination(temp);
-    	   } else if (qName.equalsIgnoreCase(Message.IS_DELAYED)) {
-    		   //  		   TODO: message.setDelayed(isDelayed);
-    	   } else if (qName.equalsIgnoreCase(Message.TA_BLOCK_ID)) {
-    		   message.setTaBLockID(temp);
-    	   } else if (qName.equalsIgnoreCase(Message.TA_TRIP_ID)) {
-    		   message.setTaTripID(temp);
-    	   } else if (qName.equalsIgnoreCase(Message.ZONE)) {
-    		   message.setZone(temp);
+    	   } else if (qName.equalsIgnoreCase(Message.STOP)) {
+    		   messageList.add(message);   
+    	   } else if (qName.equalsIgnoreCase(Message.ERROR)) {
+    		   messageList.add(message);   
+    	   } else {
+
+    		   if (qName.equalsIgnoreCase(Message.TIMESTAMP)) {
+
+    			   LOGGER.warn("endElement:timestamp="+temp);
+    			   message.setTimestamp(temp);
+    		   } else if (qName.equalsIgnoreCase(Message.PREDICTION_TIME)) {
+    			   LOGGER.warn("endElement:predictionTime="+temp);
+    			   message.setPredictionTime(temp);
+    		   } else if (qName.equalsIgnoreCase(Message.TYPE)) {
+    			   message.setType(temp);
+    		   } else if (qName.equalsIgnoreCase(Message.STOP_ID)) {
+    			   message.setStopID(temp);  
+    		   } else if (qName.equalsIgnoreCase(Message.STOP_NAME)) {
+    			   message.setStopName(temp);  
+    		   } else if (qName.equalsIgnoreCase(Message.VEHICLE_ID)) {
+    			   //    		   TODO: message.setVehicleID(VID);
+    		   } else if (qName.equalsIgnoreCase(Message.DISTANCE_TO_STOP)) {
+    			   //    		   TODO: message.setDistanceToStop(distanceToStop);
+    		   } else if (qName.equalsIgnoreCase(Message.ROUTE)) {
+    			   message.setRoute(temp);
+    		   } else if (qName.equalsIgnoreCase(Message.DIRECTION)) {
+    			   message.setDirection(temp);
+    		   } else if (qName.equalsIgnoreCase(Message.DESTINATION)) {
+    			   message.setDestination(temp);
+    		   } else if (qName.equalsIgnoreCase(Message.IS_DELAYED)) {
+    			   //  		   TODO: message.setDelayed(isDelayed);
+    		   } else if (qName.equalsIgnoreCase(Message.TA_BLOCK_ID)) {
+    			   message.setTaBLockID(temp);
+    		   } else if (qName.equalsIgnoreCase(Message.TA_TRIP_ID)) {
+    			   message.setTaTripID(temp);
+    		   } else if (qName.equalsIgnoreCase(Message.ZONE)) {
+    			   message.setZone(temp);
+    		   }
     	   }
        }
-      
 }
 

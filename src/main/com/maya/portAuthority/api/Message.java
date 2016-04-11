@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 public class Message implements Comparable<Message>{
 
 	private final static Logger LOGGER = LoggerFactory.getLogger("Message");
-	static final String PREDICTION="prd";
+	//Message Parameters
 	static final String TIMESTAMP="tmstmp";
 	static final String TYPE ="typ";
 	static final String STOP_ID ="stpid";
@@ -23,6 +23,11 @@ public class Message implements Comparable<Message>{
 	static final String TA_BLOCK_ID ="tablockid";
 	static final String TA_TRIP_ID ="tatripid"  ;   
 	static final String ZONE ="zone";
+	
+	//Message Types
+	static final String PREDICTION="prd";
+	static final String STOP="stop";
+	static final String ERROR = "error";
 	
     static SimpleDateFormat FORMATTER = new SimpleDateFormat("YYYYMMDD HH:MM");
 
@@ -111,6 +116,11 @@ public class Message implements Comparable<Message>{
      * The calculated ETA
      */
     private int estimate; 
+    
+    /**
+     * The error returned by the API
+     */
+    private String error; 
 
     ////////////////	
     public boolean equals(Object obj) {
@@ -247,5 +257,13 @@ public class Message implements Comparable<Message>{
 		this.zone = zone;
 	}
 
-    
+	public String getError() {
+		return zone;
+	}
+
+	public void setError(String error) {
+		LOGGER.warn("Error detected:"+error);
+		this.error = error;
+	}
+
 }

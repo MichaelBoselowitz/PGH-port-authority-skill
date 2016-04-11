@@ -5,7 +5,7 @@ import java.util.List;
 import junit.framework.TestCase;
 
 import com.maya.portAuthority.api.Message;
-import com.maya.portAuthority.api.TrueTimePredictionParser;
+import com.maya.portAuthority.api.TrueTimeMessageParser;
 
 /**
  * 
@@ -27,7 +27,7 @@ public class APITest extends TestCase {
 	public void testConnection() {
 		try{
 			//TrueTimePredictionParser tester = new TrueTimePredictionParser(API_URL+"?key="+ACCESS_ID+"&rt="+line+"&stpid="+station);
-			TrueTimePredictionParser tester = new TrueTimePredictionParser("http://truetime.portauthority.org/bustime/api/v1/getpredictions?key=cvTWAYXjbFEGcMSQbnv5tpteK&stpid=8161&rt=P1");
+			TrueTimeMessageParser tester = new TrueTimeMessageParser("http://truetime.portauthority.org/bustime/api/v1/getpredictions?key=cvTWAYXjbFEGcMSQbnv5tpteK&stpid=8161&rt=P1");
 			messages=tester.parse();
 			assertTrue(messages.size() > 0);
 			//assertGreaterThan ("Messages should equal 1", 1, messages.size());
