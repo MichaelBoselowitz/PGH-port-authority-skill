@@ -1,4 +1,4 @@
-package com.maya.portAuthority;
+package com.maya.portAuthority.util;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;

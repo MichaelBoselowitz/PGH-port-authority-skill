@@ -1,4 +1,4 @@
-package com.maya.portAuthority;
+package com.maya.portAuthority.util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,3 +27,4 @@ public class IntentHelperFactory {
 		return new OneShotIntentHelper(intent);
 	}
 }
+

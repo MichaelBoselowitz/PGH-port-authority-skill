@@ -1,12 +1,18 @@
 package com.maya.portAuthority;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+
+import javax.xml.parsers.ParserConfigurationException;
 
 import org.apache.log4j.BasicConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xml.sax.SAXException;
 
 import com.amazon.speech.slu.Intent;
 import com.amazon.speech.slu.Slot;
@@ -19,42 +25,40 @@ import com.amazon.speech.speechlet.Speechlet;
 import com.amazon.speech.speechlet.SpeechletException;
 import com.amazon.speech.speechlet.SpeechletResponse;
 import com.amazon.speech.ui.PlainTextOutputSpeech;
-//import com.amazon.speech.ui.SsmlOutputSpeech;
+import com.amazon.speech.ui.SsmlOutputSpeech;
 import com.amazon.speech.ui.Reprompt;
 import com.amazon.speech.ui.SimpleCard;
 import com.maya.portAuthority.api.Message;
 import com.maya.portAuthority.api.TrueTimeMessageParser;
+import com.maya.portAuthority.util.*;
 
 public class GetNextBusSpeechlet implements Speechlet {
 	private static  Logger log = LoggerFactory.getLogger(GetNextBusSpeechlet.class);
-	private static final String PREDICTION_URL="http://truetime.portauthority.org/bustime/api/v1/getpredictions";
-	private static final String STOPS_URL="http://truetime.portauthority.org/bustime/api/v1/getstops";
-	private static final String ACCESS_ID="cvTWAYXjbFEGcMSQbnv5tpteK";
+	//	private static final String PREDICTION_URL="http://truetime.portauthority.org/bustime/api/v1/getpredictions";
+	//	private static final String STOPS_URL="http://truetime.portauthority.org/bustime/api/v1/getstops";
+	//	private static final String ACCESS_ID="cvTWAYXjbFEGcMSQbnv5tpteK";
 	//private static final String line="P1";
 	//private static final String stationID="3158,4833";
-	
-	public static final String SESSION_DIRECTION = "Direction";
-	public static final String SESSION_STATION = "StationName";	
-	public static final String SESSION_BUSLINE = "Route";
 
-	private static  String SPEECH_WHICH_BUSLINE ="Which bus line would you like arrival information for?";
-	private static  String SPEECH_WHICH_DIRECTION ="Which direction are you travelling?";
-	private static  String SPEECH_WHICH_STATION ="Where do you get on the bus?";
+	//	public static final String SESSION_DIRECTION = "Direction";
+	//	public static final String SESSION_STATION = "StationName";	
+	//	public static final String SESSION_BUSLINE = "Route";
+
 	private static  String SPEECH_NO_SUCH_STATION="I can't find that station. Please say again.";
 
 
-	private static  String SPEECH_INSTRUCTIONS=
-			//"I can lead you through providing a bus line, direction, and "
-			//+ "bus stop to get departure information, "
-			//+ "or you can simply open Port Authroity and ask a question like, "
-			//+ "when is the next outbound P1 leaving sixth and smithfield. "
-			//+ "For a list of supported buslines, ask what bus lines are supported. "
-			//+ 
-			SPEECH_WHICH_BUSLINE;
+	//	private static  String SPEECH_INSTRUCTIONS=
+	//			//"I can lead you through providing a bus line, direction, and "
+	//			//+ "bus stop to get departure information, "
+	//			//+ "or you can simply open Port Authroity and ask a question like, "
+	//			//+ "when is the next outbound P1 leaving sixth and smithfield. "
+	//			//+ "For a list of supported buslines, ask what bus lines are supported. "
+	//			//+ 
+	//			SPEECH_WHICH_BUSLINE;
 
-	private static  String SPEECH_WELCOME="Welcome to Pittsburgh Port Authority "+ SPEECH_WHICH_BUSLINE;
-	
-	private static List<IntentHelper> dataHelpers;
+	private static  String SPEECH_WELCOME="Welcome to Pittsburgh Port Authority ";//+ SPEECH_WHICH_BUSLINE;
+
+	private Map<String, DataHelper> dataHelpers;
 
 
 	/**PUBLIC METHODS******************************/
@@ -64,238 +68,138 @@ public class GetNextBusSpeechlet implements Speechlet {
 		BasicConfigurator.configure();
 		log.info("onLaunch requestId={}, sessionId={}", request.getRequestId(),
 				session.getSessionId());
-		return newAskResponse(SPEECH_WELCOME, SPEECH_WHICH_BUSLINE);
+		return newAskResponse(SPEECH_WELCOME+RouteHelper.SPEECH, RouteHelper.SPEECH);
 	}
 
 	public void onSessionStarted(SessionStartedRequest request, Session session)
 			throws SpeechletException {
 		log.info("onSessionStarted requestId={}, sessionId={}", request.getRequestId(),
 				session.getSessionId());
-		// TODO any initialization logic goes here
-		// Create Helpers HERE
-
+		this.dataHelpers=new HashMap<String, DataHelper>();//createDataHelpers(session);
+		dataHelpers.put(RouteHelper.INTENT_NAME, DataHelperFactory.getHelper(session, RouteHelper.NAME));
+		dataHelpers.put(BusStopHelper.INTENT_NAME, DataHelperFactory.getHelper(session, BusStopHelper.NAME));
+		dataHelpers.put(DirectionHelper.INTENT_NAME, DataHelperFactory.getHelper(session, DirectionHelper.NAME));
 	}
-	
-	public SpeechletResponse onIntent( IntentRequest request, Session session)
+
+
+	public SpeechletResponse onIntent(IntentRequest request, Session session)
 			throws SpeechletException {
-	//	log.info("onIntent requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
+		//	log.info("onIntent requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
 
+		SpeechletResponse furtherQuestions;
 		Intent intent = request.getIntent();
-		IntentHelper intentHelper = IntentHelperFactory.getIntentHelper(intent);
 		try {
-				logSession(session, intent.getName()+" before");
-				
-				intentHelper.putValuesInSession(session);
-				
-				SpeechletResponse response= handleDialog(session);
-
-				logSession(session, "after");
-
-				return response;
-				
-			} catch (Exception e) {
-				log.debug("speechletExcpetion:"+e.getMessage());
-				throw new SpeechletException(e.getMessage());
+			if (intent.getName().equals("OneshotBusIntent")){
+				Iterator<DataHelper> itr = dataHelpers.values().iterator();
+				while (itr.hasNext()){
+					DataHelper element=itr.next();
+					element.putValuesInSession(intent);
+				}
+			} else { //DirectionBusIntent {Direction} || RouteBusIntent {Route} || StationBusIntent {StationName}
+				DataHelper dataHelper = dataHelpers.get(intent.getName());
+				dataHelper.putValuesInSession(intent);
 			}
 
+			if ((furtherQuestions=checkForAdditionalQuestions(session))!=null){
+				return furtherQuestions;
+			}
+			
+			// OK, the user has entered everything, now let's find their response
+			Map<String, String> input = getInputValuesFromSession();
+			
+			
+			List<Message> stops= getMatchedBusStops(input);
+			//log.info("Found "+stops.size()+ "matching stops");
+
+			//if 0 ask again
+			if (stops==null||stops.isEmpty()){
+				return newAskResponse("I cannot find a stop that matches. "+BusStopHelper.SPEECH,BusStopHelper.SPEECH);
+			}
+			
+			if (stops.size()>1){
+				String speechOutput = "I found several stops that match. try specifying a cross street.";
+				return newAskResponse(speechOutput+BusStopHelper.SPEECH,BusStopHelper.SPEECH);
+			}
+			
+			//if 1 find answer and respond
+			String stationID=stops.get(0).getStopID();
+			String stationName=stops.get(0).getStopName();
+			log.info("Station Name "+stationName+ " matched "+stationID);
+			return getAnswer(stationID, stationName, input.get(DirectionHelper.NAME), input.get(RouteHelper.NAME));
+
+			// get prediction for all stops
+			
+		} catch (Exception e) {
+			log.debug("speechletExcpetion:"+e.getMessage());
+			throw new SpeechletException(e.getMessage());
+		}
+
 	}
 
-	@Override
 	public void onSessionEnded(SessionEndedRequest request, Session session)
 			throws SpeechletException {
 
 		log.info("onSessionEnded requestId={}, sessionId={}", request.getRequestId(),
 				session.getSessionId());
-		// TODO cleanup goes here.
+		this.dataHelpers.clear();
 	}
 
-//	private SpeechletResponse getNextBusSpeechletResponse(Intent intent,  Session session) {
-//		log.info("getNextBusSpeechletResponse() handling intent: "+intent.getName()+"...");
-//
-//		//input from intent
-//
-//		String stationName = (intent.getSlot(SLOT_STATION) != null) ? intent.getSlot(SLOT_STATION).getValue(): null; 
-//		String directionName = (intent.getSlot(SLOT_DIRECTION) != null) ? intent.getSlot(SLOT_DIRECTION).getValue(): null; 
-//		String buslineName = (intent.getSlot(SLOT_BUSLINE) != null) ? intent.getSlot(SLOT_BUSLINE).getValue(): null;
-//		log.info("... with station:"+stationName+", direction:"+directionName+", busline:"+buslineName);
-//		//output to speech
-//		String outputText="";
-//		String repromptText="";
-//
-//		//BusStation busStation=null;
-//
-//		// If I have all the information
-//		if ((stationName!=null)&&(directionName!=null)&&(buslineName!=null)){
-//			try {
-//				//busStation = new BusStation(stationName);
-//			} catch (Exception e) {
-//				outputText="I don't know station " +stationName;
-//				repromptText="What Station?";
-//				//return newAskResponse (outputText, repromptText);
-//				return newAskResponse(SPEECH_NO_SUCH_STATION+ SPEECH_WHICH_STATION, SPEECH_WHICH_STATION);
-//			}
-//			return getAnswerFromStationName(stationName, directionName, buslineName);
-//
-//			//Otherwise save what information I have and ask for more
-//		} else {
-//			if (stationName==null){
-//				// initialize Station Question
-//				outputText=SPEECH_WHICH_STATION;
-//				repromptText=SPEECH_WHICH_STATION;
-//			} else {
-//				session.setAttribute(SESSION_STATION, stationName); 
-//			}
-//
-//			if (directionName==null){
-//				outputText=SPEECH_WHICH_DIRECTION;
-//				repromptText=SPEECH_WHICH_DIRECTION;
-//			} else {
-//				session.setAttribute(SESSION_DIRECTION, directionName); 
-//			}
-//
-//			if (buslineName==null){
-//				outputText=SPEECH_WHICH_BUSLINE;
-//				repromptText=SPEECH_WHICH_BUSLINE;
-//			} else {
-//				session.setAttribute(SESSION_BUSLINE, buslineName); 
-//			}
-//
-//			return newAskResponse (outputText, repromptText); 
-//
-//		}
-//
-//
-//
-//	}
 
+	private SpeechletResponse checkForAdditionalQuestions(Session session) {
+		logSession(session, "checkingForAdditionalQuestions");
 
+		// Do I have all the data I need?
+		Iterator<DataHelper> itr=dataHelpers.values().iterator();	
+		while (itr.hasNext()){
+			DataHelper element=itr.next();
 
-	private String getValueFromSession( Session session,  String name){
-		if (session.getAttributes().containsKey(name)) {
-			return (String) session.getAttribute(name);
-		} else {
-			return null;
-		}
-	}
-
-//	private void putValuesInSession(Intent intent, Session session) throws Exception{
-//		log.debug("putValuesInSession" );
-//		//user supplied station
-//		String stationName=getValueFromIntentSlot(intent,SLOT_STATION);
-//		String direction=getValueFromIntentSlot(intent,SLOT_DIRECTION);
-//		String busline=getValueFromIntentSlot(intent,SLOT_BUSLINE);
-//		BusStation station=null;
-//		log.debug("... with Slot station:"+stationName+", direction:"+direction+", busline:"+busline);
-//
-////!! stationName--- should be checking to see if the Intent is station.
-//		if (stationName!=null){
-//			station=new BusStation(stationName);
-//			log.debug("putting value in session Slot station:"+stationName);
-//			session.setAttribute(SESSION_STATION, station.name.toUpperCase()); 
-//			session.setAttribute(SESSION_STATION_ID, station.ID);	
-//		} 
-//		if (direction!=null){
-//			log.debug("putting value in sesion Slot direction:"+direction);
-//			session.setAttribute(SESSION_DIRECTION, direction.toUpperCase());
-//		}
-//		if (busline!=null){
-//			log.debug("putting value in sesion Slot busline:"+busline);
-//			//TODO: remove whitepace
-//			busline=busline.replaceAll("\\s+","");
-//			session.setAttribute(SESSION_BUSLINE,busline.toUpperCase());
-//		}
-//
-//		String sessionStationName=getValueFromSession(session,SESSION_STATION);
-//		String sessionStationID=getValueFromSession(session,SESSION_STATION_ID);
-//		String sessionDirection=getValueFromSession(session,SESSION_DIRECTION);
-//		String sessionBusline=getValueFromSession(session,SESSION_BUSLINE);
-//
-//		log.debug("...existing with Session station:"+sessionStationName+", direction:"+sessionDirection+", busline:"+sessionBusline);
-//	}
-
-	private SpeechletResponse handleDialog(Session session) {
-		log.trace("handling dialog() ...");
-
-		String stationName=getValueFromSession(session,SESSION_STATION);
-		//String stationID=getValueFromSession(session,SESSION_STATION_ID);
-		String direction=getValueFromSession(session,SESSION_DIRECTION);
-		String busline=getValueFromSession(session,SESSION_BUSLINE);
-
-		if (stationName==null){//||(stationID==null)) {
-			log.debug("Looking for Station");
-			return newAskResponse(session, SPEECH_WHICH_STATION, SPEECH_WHICH_STATION);
-		} else if (direction==null) {
-			log.debug("Looking for Direction");
-			return newAskResponse(session, SPEECH_WHICH_DIRECTION, SPEECH_WHICH_DIRECTION);
-		} else if (busline==null) {
-			log.debug("Looking for Busline");
-			return newAskResponse(session, SPEECH_WHICH_BUSLINE, SPEECH_WHICH_BUSLINE);
-		} else {
-			try {
-				log.info("Looking for Answer");
-				return getAnswerFromStationName(stationName, direction, busline);
-				//return getAnswer(BusStation.getBusStation(stationName), direction, busline);
-			} catch (Exception e) {
-				String outputText="I don't know station in session" + e.getMessage();
-				return newAskResponse (session, outputText+ SPEECH_WHICH_STATION, SPEECH_WHICH_STATION); 			
+			if (element.getValueFromSession()==null){
+				log.info(element.getName()+":"+element.getValueFromSession()+"==null");
+				return newAskResponse(session, element.getSpeech(), element.getSpeech()); 	
+			} else {
+				log.info(element.getName()+":"+element.getValueFromSession()+"!=null");
 			}
 		}
+
+		return null;
 	}
 
-	public SpeechletResponse getAnswerFromStationName(String stationName, String direction, String busline){
-		String stationID;
-		try{
+	public List<Message> getMatchedBusStops(Map<String, String> input){
+		String matchString=input.get(BusStopHelper.NAME);
+		//TODO: Refactor
+		String apiString= TrueTimeMessageParser.STOPS_URL+"?key="+TrueTimeMessageParser.ACCESS_ID+"&rt="+input.get(RouteHelper.NAME)+"&dir="+input.get(DirectionHelper.NAME);
+		log.info("apiString="+apiString);
 
-			CharSequence matchString=stationName.toUpperCase();
-			int numMatches=0;
+		TrueTimeMessageParser apiResponse = new TrueTimeMessageParser(apiString);
+		List<Message> stops=null;
 
-			String apiString= STOPS_URL+"?key="+ACCESS_ID+"&rt="+busline+"&dir="+direction;
-			log.info("apiString="+apiString);
+		try {
+			stops = apiResponse.parse();
 
-			TrueTimeMessageParser apiResponse = new TrueTimeMessageParser(apiString);
-			List<Message> stops=apiResponse.parse();
 
-			log.info("Number of "+direction+" stops for the "+busline+" line is "+stops.size());
+			//log.info("Number of "+direction+" stops for the "+busline+" line is "+stops.size());
 			Iterator<Message> iterator = stops.iterator();
 			while (iterator.hasNext()){
 				Message element=(Message)iterator.next();
 				log.info("Trying to Match: "+element.getStopName().toUpperCase() + "with "+matchString);
 				if (element.getStopName().toUpperCase().contains(matchString)){
 					log.info("found one");
-					numMatches+=1;
 				}else{
 					iterator.remove();
 				}
 			}
 
-			if (numMatches==0){
-				String speechOutput = "For which station would you like bus arrival times?";
-				return newAskResponse("I cannot find station. "+speechOutput,speechOutput);
-				//				TODO: Handle Multiple Station Matches
-				//				} else if (numMatches>1) {
-				//					String speechOutput = "I can't figure out which station you want.";
-				//					return newAskResponse("I found more than one station. "+speechOutput,speechOutput);
-			} else {
-				stationID=stops.get(0).getStopID();
-				log.info("Station Name "+stationName+ " matched "+stationID);
-				stationName=stops.get(0).getStopName();
-			}
-			
-		}catch (Exception e){
-			//e.printStackTrace();
-			String speechOutput = "For which station would you like bus arrival times?";
-			return newAskResponse("I cannot find station"+e.getMessage() +". "+speechOutput,speechOutput);
+		} catch (IOException | SAXException | ParserConfigurationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		return getAnswer(stationID, stationName, direction, busline);
+		return stops;
+
 	}
 
-	 
 	private SpeechletResponse getAnswer(String stationID, String stationName, String direction,
 			String busline) {
-		
-		//TODO: Handle bring back station names
-		
-		
+
 		SimpleCard card = new SimpleCard();
 		List<Message> messages;
 		int when;
@@ -312,7 +216,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 		log.info(stationID+", direction:"+direction+", busline:"+busline);
 
 		try { 
-			String apiString= PREDICTION_URL+"?key="+ACCESS_ID+"&rt="+busline+"&stpid="+stationID;
+			String apiString= TrueTimeMessageParser.PREDICTION_URL+"?key="+TrueTimeMessageParser.ACCESS_ID+"&rt="+busline+"&stpid="+stationID;
 			log.info("apiString="+apiString);
 
 			TrueTimeMessageParser tester = new TrueTimeMessageParser(apiString);
@@ -324,7 +228,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 
 			if (messages.size()==0){
 				speechOutput=" No "+direction+", "+ busline +" is expected at " + stationName + " in the next 30 minutes  ";
-				
+
 			} else {
 
 				for (int i=0;i<messages.size();i++){
@@ -332,16 +236,14 @@ public class GetNextBusSpeechlet implements Speechlet {
 					if (i==0){ 
 						if (when < 3){
 							speechOutput="An "+direction+" "+busline+ 
-									" is arriving at " + stationName + "now ";
+									" is arriving at " + stationName +" <break time=\"0.1s\" /> now ";
 						} else {
 							speechOutput="An "+direction+" "+busline+ 
 									" will be arriving at " + stationName + " in "+when+" minutes ";
 						}
 					} else {
-						speechOutput=speechOutput+" and another in"+when+" minutes";
+						speechOutput=speechOutput+" <break time=\"0.25s\" /> and another in "+when+" minutes";
 					}
-					//TODO: Add Ssml
-					//speechOutput=speechOutput+" <break time=1s> ";
 				}
 			}
 
@@ -361,11 +263,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 	}
 
 	private SpeechletResponse newAskResponse (Session session, String output, String reprompt){
-		String stationName=getValueFromSession(session,SESSION_STATION);
-		//String stationID=getValueFromSession(session,SESSION_STATION_ID);
-		String direction=getValueFromSession(session,SESSION_DIRECTION);
-		String busline=getValueFromSession(session,SESSION_BUSLINE);
-		log.debug("Asking Response with Session station:"+stationName+", direction:"+direction+", busline:"+busline);
+		this.logSession(session, "newAskResponse");
 		return newAskResponse(output, reprompt);
 	}
 
@@ -380,27 +278,43 @@ public class GetNextBusSpeechlet implements Speechlet {
 	 * @return SpeechletResponse the speechlet response
 	 */
 	private SpeechletResponse newAskResponse(String stringOutput, String repromptText) {
-		PlainTextOutputSpeech outputSpeech = new PlainTextOutputSpeech();
-		outputSpeech.setText(stringOutput);
-		//SsmlOutputSpeech outputSpeech = new SsmlOutputSpeech();
-		//outputSpeech.setSsml(stringOutput);
-		
+		//PlainTextOutputSpeech outputSpeech = new PlainTextOutputSpeech();
+		//outputSpeech.setText(stringOutput);
+		SsmlOutputSpeech outputSpeech = new SsmlOutputSpeech();
+		outputSpeech.setSsml(stringOutput );
+
 		PlainTextOutputSpeech repromptOutputSpeech = new PlainTextOutputSpeech();
 		repromptOutputSpeech.setText(repromptText);
 		//SsmlOutputSpeech repromptOutputSpeech = new SsmlOutputSpeech();
 		//repromptOutputSpeech.setSsml(repromptText);
-		
+
 		Reprompt reprompt = new Reprompt();
 		reprompt.setOutputSpeech(repromptOutputSpeech);
 		return SpeechletResponse.newAskResponse(outputSpeech, reprompt);
 	}
-
+	/**
+	 * Helper method to log the data currently stored in session.
+	 * @param session
+	 * @param intro
+	 */
 	private void logSession(Session session, String intro){
-		String stationName=getValueFromSession(session,SESSION_STATION);
-		//String stationID=getValueFromSession(session,SESSION_STATION_ID);
-		String direction=getValueFromSession(session,SESSION_DIRECTION);
-		String busline=getValueFromSession(session,SESSION_BUSLINE);
-
-		log.info(intro+"... with Session station:"+stationName+",direction:"+direction+", busline:"+busline);
+		Iterator<DataHelper> itr = dataHelpers.values().iterator();
+		while (itr.hasNext()){
+			DataHelper element=itr.next();
+			log.info(intro + "Session:"+element.getName()+":"+element.getValueFromSession());
+		}
+	}
+	
+	/**
+	 * 
+	 * **/
+	private Map<String, String> getInputValuesFromSession(){
+		Map<String, String> input = new HashMap<String, String>();
+		Iterator<DataHelper> itr = dataHelpers.values().iterator();
+		while (itr.hasNext()){
+			DataHelper element=itr.next();
+			input.put(element.getName(), element.getValueFromSession());
+		}
+		return input;
 	}
 }

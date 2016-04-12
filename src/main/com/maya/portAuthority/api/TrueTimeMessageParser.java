@@ -15,7 +15,11 @@ import org.xml.sax.SAXException;
 
 public class TrueTimeMessageParser extends BaseAPIParser {
 	private static  Logger LOGGER = LoggerFactory.getLogger(TrueTimeMessageParser.class);
-                  
+	
+  	public static final String PREDICTION_URL="http://truetime.portauthority.org/bustime/api/v1/getpredictions";
+	public static final String STOPS_URL="http://truetime.portauthority.org/bustime/api/v1/getstops";
+	public static final String ACCESS_ID="cvTWAYXjbFEGcMSQbnv5tpteK";
+  	
   public TrueTimeMessageParser(String urlString) {
 		super(urlString);
 		LOGGER.info("constructor");

@@ -1,4 +1,4 @@
-package com.maya.portAuthority;
+package com.maya.portAuthority.util;
 
 import com.amazon.speech.slu.Intent;
 import com.amazon.speech.slu.Slot;
