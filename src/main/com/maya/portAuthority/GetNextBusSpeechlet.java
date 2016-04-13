@@ -9,6 +9,7 @@ import java.util.Map;
 
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.BasicConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,29 +35,17 @@ import com.maya.portAuthority.util.*;
 
 public class GetNextBusSpeechlet implements Speechlet {
 	private static  Logger log = LoggerFactory.getLogger(GetNextBusSpeechlet.class);
-	//	private static final String PREDICTION_URL="http://truetime.portauthority.org/bustime/api/v1/getpredictions";
-	//	private static final String STOPS_URL="http://truetime.portauthority.org/bustime/api/v1/getstops";
-	//	private static final String ACCESS_ID="cvTWAYXjbFEGcMSQbnv5tpteK";
-	//private static final String line="P1";
-	//private static final String stationID="3158,4833";
-
-	//	public static final String SESSION_DIRECTION = "Direction";
-	//	public static final String SESSION_STATION = "StationName";	
-	//	public static final String SESSION_BUSLINE = "Route";
 
 	private static  String SPEECH_NO_SUCH_STATION="I can't find that station. Please say again.";
 
+	private static  String SPEECH_INSTRUCTIONS=
+			"I can lead you through providing a bus line, direction, and "
+					+ "bus stop to get departure information, "
+					+ "or you can simply open Port Authroity and ask a question like, "
+					+ "when is the next outbound P1 leaving sixth and smithfield. "
+					+ "For a list of supported buslines, ask what bus lines are supported. ";
 
-	//	private static  String SPEECH_INSTRUCTIONS=
-	//			//"I can lead you through providing a bus line, direction, and "
-	//			//+ "bus stop to get departure information, "
-	//			//+ "or you can simply open Port Authroity and ask a question like, "
-	//			//+ "when is the next outbound P1 leaving sixth and smithfield. "
-	//			//+ "For a list of supported buslines, ask what bus lines are supported. "
-	//			//+ 
-	//			SPEECH_WHICH_BUSLINE;
-
-	private static  String SPEECH_WELCOME="Welcome to Pittsburgh Port Authority ";//+ SPEECH_WHICH_BUSLINE;
+	private static  String SPEECH_WELCOME="Welcome to Pittsburgh Port Authority ";
 
 	private Map<String, DataHelper> dataHelpers;
 
@@ -88,52 +77,51 @@ public class GetNextBusSpeechlet implements Speechlet {
 
 		SpeechletResponse furtherQuestions;
 		Intent intent = request.getIntent();
-		try {
-			if (intent.getName().equals("OneshotBusIntent")){
-				Iterator<DataHelper> itr = dataHelpers.values().iterator();
-				while (itr.hasNext()){
-					DataHelper element=itr.next();
-					element.putValuesInSession(intent);
-				}
-			} else { //DirectionBusIntent {Direction} || RouteBusIntent {Route} || StationBusIntent {StationName}
-				DataHelper dataHelper = dataHelpers.get(intent.getName());
-				dataHelper.putValuesInSession(intent);
-			}
 
-			if ((furtherQuestions=checkForAdditionalQuestions(session))!=null){
-				return furtherQuestions;
+		if (intent.getName().equals("OneshotBusIntent")){
+			Iterator<DataHelper> itr = dataHelpers.values().iterator();
+			while (itr.hasNext()){
+				DataHelper element=itr.next();
+				element.putValuesInSession(intent);
 			}
-			
-			// OK, the user has entered everything, now let's find their response
-			Map<String, String> input = getInputValuesFromSession();
-			
-			
-			List<Message> stops= getMatchedBusStops(input);
-			//log.info("Found "+stops.size()+ "matching stops");
-
-			//if 0 ask again
-			if (stops==null||stops.isEmpty()){
-				return newAskResponse("I cannot find a stop that matches. "+BusStopHelper.SPEECH,BusStopHelper.SPEECH);
-			}
-			
-			if (stops.size()>1){
-				String speechOutput = "I found several stops that match. try specifying a cross street.";
-				return newAskResponse(speechOutput+BusStopHelper.SPEECH,BusStopHelper.SPEECH);
-			}
-			
-			//if 1 find answer and respond
-			String stationID=stops.get(0).getStopID();
-			String stationName=stops.get(0).getStopName();
-			log.info("Station Name "+stationName+ " matched "+stationID);
-			return getAnswer(stationID, stationName, input.get(DirectionHelper.NAME), input.get(RouteHelper.NAME));
-
-			// get prediction for all stops
-			
-		} catch (Exception e) {
-			log.debug("speechletExcpetion:"+e.getMessage());
-			throw new SpeechletException(e.getMessage());
+		} else { //DirectionBusIntent {Direction} || RouteBusIntent {Route} || StationBusIntent {StationName}
+			DataHelper dataHelper = dataHelpers.get(intent.getName());
+			dataHelper.putValuesInSession(intent);
 		}
 
+		if ((furtherQuestions=checkForAdditionalQuestions(session))!=null){
+			return furtherQuestions;
+		}
+
+		// OK, the user has entered everything, now let's find their response
+		Map<String, String> input = getInputValuesFromSession();
+
+
+		List<Message> stops= getMatchedBusStops(input);
+		//log.info("Found "+stops.size()+ "matching stops");
+
+		//if 0 ask again
+		if (stops==null||stops.isEmpty()){
+			return newAskResponse("I cannot find a stop that matches. "+input.get(BusStopHelper.NAME)+
+					" <break time=\"0.1s\" /> for "+input.get(DirectionHelper.NAME)+" "+input.get(RouteHelper.NAME) + 
+					" <break time=\"0.1s\" /> "+BusStopHelper.SPEECH,
+					BusStopHelper.SPEECH);
+		}
+
+		if (stops.size()>1){
+			String speechOutput = "I found several stops that match. try specifying a cross street.";
+			return newAskResponse(speechOutput+BusStopHelper.SPEECH,BusStopHelper.SPEECH);
+		}
+
+		//if 1 find answer and respond
+		List<Message> messages= new ArrayList<Message>();
+		String stationID=stops.get(0).getStopID();
+		String stationName=stops.get(0).getStopName();
+		log.info("Station Name "+stationName+ " matched "+stationID);
+		messages=TrueTimeMessageParser.getPredictions(input.get(RouteHelper.NAME), stationID);
+
+		// get speech response for all stops
+		return getAnswer (messages, input.get(RouteHelper.NAME), stationName, input.get(DirectionHelper.NAME));
 	}
 
 	public void onSessionEnded(SessionEndedRequest request, Session session)
@@ -164,65 +152,33 @@ public class GetNextBusSpeechlet implements Speechlet {
 		return null;
 	}
 
-	public List<Message> getMatchedBusStops(Map<String, String> input){
+	private List<Message> getMatchedBusStops(Map<String, String> input){
 		String matchString=input.get(BusStopHelper.NAME);
-		//TODO: Refactor
-		String apiString= TrueTimeMessageParser.STOPS_URL+"?key="+TrueTimeMessageParser.ACCESS_ID+"&rt="+input.get(RouteHelper.NAME)+"&dir="+input.get(DirectionHelper.NAME);
-		log.info("apiString="+apiString);
-
-		TrueTimeMessageParser apiResponse = new TrueTimeMessageParser(apiString);
-		List<Message> stops=null;
-
-		try {
-			stops = apiResponse.parse();
-
-
-			//log.info("Number of "+direction+" stops for the "+busline+" line is "+stops.size());
-			Iterator<Message> iterator = stops.iterator();
-			while (iterator.hasNext()){
-				Message element=(Message)iterator.next();
-				log.info("Trying to Match: "+element.getStopName().toUpperCase() + "with "+matchString);
-				if (element.getStopName().toUpperCase().contains(matchString)){
-					log.info("found one");
-				}else{
-					iterator.remove();
-				}
+		List<Message> stops = TrueTimeMessageParser.getStops(input.get(RouteHelper.NAME),input.get(DirectionHelper.NAME));
+		Iterator<Message> iterator = stops.iterator();
+		while (iterator.hasNext()){
+			Message element=(Message)iterator.next();
+			log.debug("Trying to Match: "+element.getStopName().toUpperCase() + "with "+matchString);
+			//if (element.getStopName().toUpperCase().contains(matchString)){
+			if (match(element.getStopName().toUpperCase(), matchString)){
+				log.debug("found one");
+			}else{
+				iterator.remove();
 			}
-
-		} catch (IOException | SAXException | ParserConfigurationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
-		return stops;
+	return stops;
 
 	}
 
-	private SpeechletResponse getAnswer(String stationID, String stationName, String direction,
-			String busline) {
-
+	private SpeechletResponse getAnswer(List<Message> messages, String busline , String stationName, String direction) {
+		SsmlOutputSpeech outputSpeech= new SsmlOutputSpeech();
+		//PlainTextOutputSpeech outputSpeech = new PlainTextOutputSpeech();
 		SimpleCard card = new SimpleCard();
-		List<Message> messages;
 		int when;
 		log.info("getAnswer... with station:");
-		//SsmlOutputSpeech outputSpeech= new SsmlOutputSpeech();
-		PlainTextOutputSpeech outputSpeech = new PlainTextOutputSpeech();
-
-
-		if ((stationID==null)||(direction==null)||(busline==null)){
-			//outputSpeech.setSsml("I forgot what you told me");
-			outputSpeech.setText("I forgot what you told me");
-			return SpeechletResponse.newTellResponse(outputSpeech, new SimpleCard());
-		}
-		log.info(stationID+", direction:"+direction+", busline:"+busline);
+		
 
 		try { 
-			String apiString= TrueTimeMessageParser.PREDICTION_URL+"?key="+TrueTimeMessageParser.ACCESS_ID+"&rt="+busline+"&stpid="+stationID;
-			log.info("apiString="+apiString);
-
-			TrueTimeMessageParser tester = new TrueTimeMessageParser(apiString);
-			messages=tester.parse();
-			log.info("messages size"+messages.size());
-
 			//Define speech output
 			String speechOutput = "";
 
@@ -253,8 +209,8 @@ public class GetNextBusSpeechlet implements Speechlet {
 			card.setContent(speechOutput);
 
 			// Create the plain text output
-			outputSpeech.setText(speechOutput);
-			//outputSpeech.setSsml(speechOutput);
+			//outputSpeech.setText(speechOutput);
+			outputSpeech.setSsml("<speak> "+speechOutput+"</speak>");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -281,8 +237,8 @@ public class GetNextBusSpeechlet implements Speechlet {
 		//PlainTextOutputSpeech outputSpeech = new PlainTextOutputSpeech();
 		//outputSpeech.setText(stringOutput);
 		SsmlOutputSpeech outputSpeech = new SsmlOutputSpeech();
-		outputSpeech.setSsml(stringOutput );
-
+		outputSpeech.setSsml("<speak> "+stringOutput+" </speak>");
+		
 		PlainTextOutputSpeech repromptOutputSpeech = new PlainTextOutputSpeech();
 		repromptOutputSpeech.setText(repromptText);
 		//SsmlOutputSpeech repromptOutputSpeech = new SsmlOutputSpeech();
@@ -305,6 +261,54 @@ public class GetNextBusSpeechlet implements Speechlet {
 		}
 	}
 	
+	/**
+	 * Matches numerics to Strings, too.
+	 * @return
+	 */
+	private boolean match (String s1, String s2){
+		if (s1.toUpperCase().contains(s2.toUpperCase())){
+			return true;
+		}
+		//replace numbers with words
+		if (StringUtils.isAlphanumericSpace(s1)&&!StringUtils.isAlphaSpace(s1)) {
+			s1=replaceNumWithOrdinalWord(s1);
+		}
+		if (StringUtils.isAlphanumericSpace(s2)&&!StringUtils.isAlphaSpace(s2)) {
+			s2=replaceNumWithOrdinalWord(s2);
+		}
+		if (s1.toUpperCase().contains(s2.toUpperCase())){
+			return true;
+		}
+		return false;
+	}
+	
+	private String replaceNumWithOrdinalWord(String inputString){
+		log.debug("replaceNumWithOrdinalWord input:"+inputString);
+		StringBuffer output = new StringBuffer(inputString.length());
+		String digitStr ="";
+
+		for (int i = 0; i < inputString.length(); i++) {
+			if (Character.isDigit(inputString.charAt(i))) {
+				digitStr += inputString.charAt(i);
+			} else if (Character.isAlphabetic(inputString.charAt(i))&&!digitStr.isEmpty()){
+				//ignore alphabetics that are juxtaposed with digits
+			} else if (digitStr.isEmpty()) {
+				output.append(inputString.charAt(i));
+			} else {
+				//translate the digits and move them over
+				output.append(NumberMaps.num2OrdWordMap.get(Integer.parseInt(digitStr))) ;
+				digitStr = "";
+			}
+		}
+		if (!digitStr.isEmpty()) {
+			//translate the digits and move them over
+			output.append(NumberMaps.num2OrdWordMap.get(Integer.parseInt(digitStr))) ;
+			digitStr = "";
+		}
+		String returnValue= new String (output);
+		log.debug("replaceNumWithOrdinalWord returning:"+returnValue);
+		return returnValue;
+	}
 	/**
 	 * 
 	 * **/
