@@ -84,6 +84,10 @@ public class GetNextBusSpeechlet implements Speechlet {
 				DataHelper element=itr.next();
 				element.putValuesInSession(intent);
 			}
+//		} else if (intent.getName().equals("MainStreetBusIntent")){
+//			DataHelper dataHelper = dataHelpers.get("StationBusIntent");
+//			dataHelper.putValuesInSession(intent);
+			
 		} else { //DirectionBusIntent {Direction} || RouteBusIntent {Route} || StationBusIntent {StationName}
 			DataHelper dataHelper = dataHelpers.get(intent.getName());
 			dataHelper.putValuesInSession(intent);
@@ -108,10 +112,10 @@ public class GetNextBusSpeechlet implements Speechlet {
 					BusStopHelper.SPEECH);
 		}
 
-		if (stops.size()>1){
-			String speechOutput = "I found several stops that match. try specifying a cross street.";
-			return newAskResponse(speechOutput+BusStopHelper.SPEECH,BusStopHelper.SPEECH);
-		}
+//		if (stops.size()>1){
+//			String speechOutput = "I found several stops that match. try specifying a cross street.";
+//			return newAskResponse(speechOutput+BusStopHelper.SPEECH,BusStopHelper.SPEECH);
+//		}
 
 		//if 1 find answer and respond
 		List<Message> messages= new ArrayList<Message>();

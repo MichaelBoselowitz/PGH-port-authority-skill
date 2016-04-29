@@ -1,0 +1,20 @@
+OneshotBusIntent when is 
+OneshotBusIntent when is the next bus
+OneshotBusIntent bus information
+OneshotBusIntent when is the {Direction} {Route} 
+OneshotBusIntent when is the {Direction} {Route} arriving at {StationName}
+OneshotBusIntent when is the {Direction} {Route} arriving at {StationName} Street
+OneshotBusIntent when is the {Direction} {Route} arriving at {StationName} Avenue
+
+DirectionBusIntent {Direction}
+
+RouteBusIntent {Route}
+RouteBusIntent the {Route}
+RouteBusIntent when is the next {Route}
+RouteBusIntent when the next {Route} is
+RouteBusIntent when does the next {Route} come
+
+
+StationBusIntent {StationName}
+StationBusIntent {StationName} Avenue
+StationBusIntent {StationName} Street

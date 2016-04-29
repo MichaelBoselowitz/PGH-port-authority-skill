@@ -37,13 +37,13 @@ public class BusStopHelper extends DataHelper {
 	}
 
 	public void putValuesInSession(Intent intent){
-		log.trace("putValuesInSession" );
+		log.info("putValuesInSession" );
 		String stationName=getValueFromIntentSlot(intent);
 		if (stationName!=null){
-			log.debug("putting value in session Slot station:"+stationName);
+			log.info("putting value in session Slot station:"+stationName);
 			session.setAttribute(NAME, stationName.toUpperCase()); 
 		} else {
-			log.debug("stationName is null");
+			log.info("stationName is null");
 		}
 	} 
 	

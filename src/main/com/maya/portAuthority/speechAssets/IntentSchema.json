@@ -4,16 +4,20 @@
       "intent": "OneshotBusIntent",
       "slots": [
         {
-          "name": "StationName",
-          "type": "LITERAL"
+          "name": "MainStreet",
+          "type": "LIST_OF_STOPS"
+        },
+        {
+          "name": "CrossStreet",
+          "type": "LIST_OF_STOPS"
         },
         {
           "name": "Direction",
-          "type": "LITERAL"
+          "type": "LIST_OF_DIRECTIONS"
         },
         {
-          "name": "BusLine",
-          "type": "LITERAL"
+          "name": "Route",
+          "type": "LIST_OF_BUS_ROUTES"
         }
       ]
     },
@@ -22,16 +26,16 @@
       "slots": [
         {
           "name": "Direction",
-          "type": "LITERAL"
+          "type": "LIST_OF_DIRECTIONS"
         }
       ]
     },
      {
-      "intent": "BusLineBusIntent",
+      "intent": "RouteBusIntent",
       "slots": [
         {
-          "name": "BusLine",
-          "type": "LITERAL"
+          "name": "Route",
+          "type": "LIST_OF_BUS_ROUTES"
         }
       ]
     },
@@ -39,8 +43,30 @@
       "intent": "StationBusIntent",
       "slots": [
         {
-          "name": "StationName",
-          "type": "LITERAL"
+          "name": "MainStreet",
+          "type": "LIST_OF_STOPS"
+        },
+        {
+          "name": "CrossStreet",
+          "type": "LIST_OF_STOPS"
+        }
+      ]
+    },
+ {
+      "intent": "MainStreetBusIntent",
+      "slots": [
+        {
+          "name": "MainStreet",
+          "type": "LIST_OF_STOPS"
+        }
+      ]
+    },
+ {
+      "intent": "CrossStreetBusIntent",
+      "slots": [
+        {
+          "name": "CrossStreet",
+          "type": "LIST_OF_STOPS"
         }
       ]
     }

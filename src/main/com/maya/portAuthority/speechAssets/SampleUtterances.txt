@@ -1,9 +1,42 @@
 OneshotBusIntent when is 
 OneshotBusIntent when is the next bus
 OneshotBusIntent bus information
+OneshotBusIntent when is the {Direction} {Route} 
+OneshotBusIntent when is the {Direction} {Route} arriving at {MainStreet}
+OneshotBusIntent when is the {Direction} {Route} arriving at {MainStreet} Street
+OneshotBusIntent when is the {Direction} {Route} arriving at {MainStreet} Avenue
+OneshotBusIntent when is the {Direction} {Route} arriving at {MainStreet} Street and {CrossStreet}
+OneshotBusIntent when is the {Direction} {Route} arriving at {MainStreet} and {CrossStreet} Street
+OneshotBusIntent when is the {Direction} {Route} arriving at {MainStreet} Avenue and {CrossStreet}
+OneshotBusIntent when is the {Direction} {Route} arriving at {MainStreet} and {CrossStreet} Avenue
+OneshotBusIntent when is the {Direction} {Route} arriving at {MainStreet} Street and {CrossStreet} Street
+OneshotBusIntent when is the {Direction} {Route} arriving at {MainStreet} Avenue and {CrossStreet} Street
+OneshotBusIntent when is the {Direction} {Route} arriving at {MainStreet} Avenue and {CrossStreet} Avenue
+OneshotBusIntent when is the {Direction} {Route} arriving at {MainStreet} Street and {CrossStreet} Avenue
 
-OneshotBusIntent when is the {outbound|Direction} {p one| BusLine} from {smithfield|StationName}
+DirectionBusIntent {Direction}
 
-DirectionBusIntent {outbound|Direction}
-BusLineBusIntent {p one|BusLine}
-StationBusIntent {smithfield|StationName}
+RouteBusIntent {Route}
+RouteBusIntent the {Route}
+RouteBusIntent when is the next {Route}
+RouteBusIntent when the next {Route} is
+RouteBusIntent when does the next {Route} come
+
+MainStreetBusIntent {MainStreet} 
+MainStreetBusIntent {MainStreet} Station
+MainStreetBusIntent {MainStreet} Street
+MainStreetBusIntent {MainStreet} Avenue
+
+CrossStreetBusIntent at {CrossStreet} 
+CrossStreetBusIntent at {CrossStreet} Avenue
+CrossStreetBusIntent at {CrossStreet} Street
+
+StationBusIntent {MainStreet} and {CrossStreet}
+StationBusIntent {MainStreet} and {CrossStreet} Street
+StationBusIntent {MainStreet} Street and {CrossStreet}
+StationBusIntent {MainStreet} Street and {CrossStreet} Street
+StationBusIntent {MainStreet} Avenue and {CrossStreet} Avenue
+StationBusIntent {MainStreet} and {CrossStreet} Avenue
+StationBusIntent {MainStreet} Avenue and {CrossStreet}
+StationBusIntent {MainStreet} Street and {CrossStreet} Avenue
+StationBusIntent {MainStreet} Avenue and {CrossStreet} Street
