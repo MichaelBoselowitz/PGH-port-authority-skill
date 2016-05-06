@@ -25,12 +25,19 @@ public class Message implements Comparable<Message>{
 	static final String ZONE ="zone";
 	
 	//Message Types
-	static final String PREDICTION="prd";
-	static final String STOP="stop";
-	static final String ERROR = "error";
+	public static final String PREDICTION="prd";
+	public static final String STOP="stop";
+	public static final String ERROR = "error";
 	
     static SimpleDateFormat FORMATTER = new SimpleDateFormat("YYYYMMDD HH:MM");
 
+    /**
+     * static final String PREDICTION="prd";
+     * static final String STOP="stop";
+     * static final String ERROR = "error";
+     */
+    	private String messageType;
+    	
 	/**
 	 * Date and time (local) the prediction was generated. Date and time is
 	 * represented in the following format: YYYYMMDD HH:MM. Month is represented
@@ -256,9 +263,17 @@ public class Message implements Comparable<Message>{
 	public void setZone(String zone) {
 		this.zone = zone;
 	}
+	
+	public String getMessageType(){
+		return messageType;
+	}
+	
+	public void setMessageType(String msgType){
+		this.messageType=msgType;
+	}
 
 	public String getError() {
-		return zone;
+		return error;
 	}
 
 	public void setError(String error) {

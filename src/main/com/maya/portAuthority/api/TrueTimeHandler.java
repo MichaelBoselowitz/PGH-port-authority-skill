@@ -49,6 +49,7 @@ public class TrueTimeHandler extends DefaultHandler {
             		  qName.equalsIgnoreCase(Message.ERROR)) {
           		
                      message = new Message();
+                     message.setMessageType(qName);
                      //acct.setType(attributes.getValue("type"));
 
               

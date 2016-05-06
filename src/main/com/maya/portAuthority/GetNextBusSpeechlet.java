@@ -46,7 +46,11 @@ public class GetNextBusSpeechlet implements Speechlet {
 					+ "For a list of supported buslines, ask what bus lines are supported. ";
 
 	private static  String SPEECH_WELCOME="Welcome to Pittsburgh Port Authority ";
-
+	
+	private static String AUDIO_WELCOME="<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_welcome.mp3\" />";
+	private static String AUDIO_FAILURE="<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_failure.mp3\" />";
+	private static String AUDIO_SUCCESS="<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_success.mp3\" />";
+	
 	private Map<String, DataHelper> dataHelpers;
 
 
@@ -57,13 +61,14 @@ public class GetNextBusSpeechlet implements Speechlet {
 		BasicConfigurator.configure();
 		log.info("onLaunch requestId={}, sessionId={}", request.getRequestId(),
 				session.getSessionId());
-		return newAskResponse(SPEECH_WELCOME+RouteHelper.SPEECH, RouteHelper.SPEECH);
+		return newAskResponse(AUDIO_WELCOME+SPEECH_WELCOME+RouteHelper.SPEECH, RouteHelper.SPEECH);
 	}
 
 	public void onSessionStarted(SessionStartedRequest request, Session session)
 			throws SpeechletException {
 		log.info("onSessionStarted requestId={}, sessionId={}", request.getRequestId(),
 				session.getSessionId());
+		//TODO: Not a HASHMAP
 		this.dataHelpers=new HashMap<String, DataHelper>();//createDataHelpers(session);
 		dataHelpers.put(RouteHelper.INTENT_NAME, DataHelperFactory.getHelper(session, RouteHelper.NAME));
 		dataHelpers.put(BusStopHelper.INTENT_NAME, DataHelperFactory.getHelper(session, BusStopHelper.NAME));
@@ -106,7 +111,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 
 		//if 0 ask again
 		if (stops==null||stops.isEmpty()){
-			return newAskResponse("I cannot find a stop that matches. "+input.get(BusStopHelper.NAME)+
+			return newAskResponse(AUDIO_FAILURE+"I cannot find a stop that matches. "+input.get(BusStopHelper.NAME)+
 					" <break time=\"0.1s\" /> for "+input.get(DirectionHelper.NAME)+" "+input.get(RouteHelper.NAME) + 
 					" <break time=\"0.1s\" /> "+BusStopHelper.SPEECH,
 					BusStopHelper.SPEECH);
@@ -179,7 +184,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 		//PlainTextOutputSpeech outputSpeech = new PlainTextOutputSpeech();
 		SimpleCard card = new SimpleCard();
 		int when;
-		log.info("getAnswer... with station:");
+		log.info("getAnswer... with "+messages.size()+ "messages");
 		
 
 		try { 
@@ -187,22 +192,28 @@ public class GetNextBusSpeechlet implements Speechlet {
 			String speechOutput = "";
 
 			if (messages.size()==0){
-				speechOutput=" No "+direction+", "+ busline +" is expected at " + stationName + " in the next 30 minutes  ";
+				log.info("No Messages");
+				speechOutput=AUDIO_FAILURE+" No "+direction+", "+ busline +" is expected at " + stationName + " in the next 30 minutes  ";
 
 			} else {
-
-				for (int i=0;i<messages.size();i++){
-					when=messages.get(i).getEstimate();
-					if (i==0){ 
-						if (when < 3){
-							speechOutput="An "+direction+" "+busline+ 
-									" is arriving at " + stationName +" <break time=\"0.1s\" /> now ";
+				if ((messages.size()==1)&&(messages.get(0).getMessageType().equals(Message.ERROR))){
+					log.info("1 error message:"+ messages.get(0).getError());
+					speechOutput=AUDIO_FAILURE+" No "+direction+", "+ busline +" is expected at " + stationName + " in the next 30 minutes  ";
+				} else {
+					for (int i=0;i<messages.size();i++){
+						log.info("Message["+i+"]= "+messages.get(i).getMessageType() );
+						when=messages.get(i).getEstimate();
+						if (i==0){ 
+							if (when < 3){
+								speechOutput=AUDIO_SUCCESS+"An "+direction+" "+busline+ 
+										" is arriving at " + stationName +" <break time=\"0.1s\" /> now ";
+							} else {
+								speechOutput=AUDIO_SUCCESS+"An "+direction+" "+busline+ 
+										" will be arriving at " + stationName + " in "+when+" minutes ";
+							}
 						} else {
-							speechOutput="An "+direction+" "+busline+ 
-									" will be arriving at " + stationName + " in "+when+" minutes ";
+							speechOutput=speechOutput+" <break time=\"0.25s\" /> and another in "+when+" minutes";
 						}
-					} else {
-						speechOutput=speechOutput+" <break time=\"0.25s\" /> and another in "+when+" minutes";
 					}
 				}
 			}
