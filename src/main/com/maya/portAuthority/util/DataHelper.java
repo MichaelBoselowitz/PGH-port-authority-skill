@@ -1,6 +1,7 @@
 package com.maya.portAuthority.util;
 
 import com.amazon.speech.speechlet.Session;
+import com.maya.portAuthority.InvalidInputException;
 import com.amazon.speech.slu.Intent;
 /**
  * @author brown
@@ -9,7 +10,7 @@ import com.amazon.speech.slu.Intent;
 public abstract class DataHelper {	
 	public static String SPEECH;
 
-	public abstract void putValuesInSession(Intent intent);
+	public abstract void putValuesInSession(Intent intent) throws InvalidInputException;
 	
 	public abstract String getValueFromIntentSlot(Intent intent);
 	
