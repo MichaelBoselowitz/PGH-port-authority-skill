@@ -28,7 +28,7 @@ public class TrueTimeMessageParser extends BaseAPIParser {
 	public static final String ACCESS_ID="cvTWAYXjbFEGcMSQbnv5tpteK";
 
 	public TrueTimeMessageParser() {
-		LOGGER.info("constructor");
+		LOGGER.trace("constructor");
 	}
 
 	/**
@@ -47,7 +47,7 @@ public class TrueTimeMessageParser extends BaseAPIParser {
 	 */
 	public static List<Message> getStops (String busline, String direction){
 		String apiString= TRUETIME_URL+VERSION+CMD_STOPS+"?key="+ACCESS_ID+"&rt="+busline+"&dir="+direction;
-		LOGGER.info("apiString="+apiString);
+		LOGGER.debug("getStops:apiString="+apiString);
 		List<Message> messages=new ArrayList<Message>();
 		try {
 			messages= TrueTimeMessageParser.parse(apiString);
@@ -57,7 +57,7 @@ public class TrueTimeMessageParser extends BaseAPIParser {
 			errorMsg.setError(e.getMessage());
 			messages.add(errorMsg);
 		}
-		LOGGER.info("messages size"+messages.size());
+		LOGGER.debug("getStops:messages size"+messages.size());
 		return messages;
 
 		
@@ -119,7 +119,7 @@ public class TrueTimeMessageParser extends BaseAPIParser {
 	public static List<Message> getPredictions (String busline, String stationID){
 		List<Message> messages= new ArrayList<Message>();
 		String apiString= TRUETIME_URL+VERSION+CMD_PREDICTION+"?key="+ACCESS_ID+"&rt="+busline+"&stpid="+stationID;
-		LOGGER.info("apiString="+apiString);
+		LOGGER.debug("getPredictions:apiString="+apiString);
 
 		//TrueTimeMessageParser tester = new TrueTimeMessageParser(apiString);
 		try {
@@ -130,7 +130,7 @@ public class TrueTimeMessageParser extends BaseAPIParser {
 			errorMsg.setError(e.getMessage());
 			messages.add(errorMsg);
 		}
-		LOGGER.info("messages size"+messages.size());
+		LOGGER.debug("getPredictions:messages size"+messages.size());
 		return messages;
 	}
 

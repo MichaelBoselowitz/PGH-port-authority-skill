@@ -24,7 +24,7 @@ public class TrueTimeHandler extends DefaultHandler {
        
        public TrueTimeHandler(){
     	   super();
-    	   LOGGER.info("constructor");
+    	   LOGGER.trace("constructor");
        }
        
        /*
@@ -50,10 +50,7 @@ public class TrueTimeHandler extends DefaultHandler {
           		
                      message = new Message();
                      message.setMessageType(qName);
-                     //acct.setType(attributes.getValue("type"));
-
-              
-            	  
+                     //acct.setType(attributes.getValue("type"));  
               }
        }
 
@@ -70,7 +67,7 @@ public class TrueTimeHandler extends DefaultHandler {
     		   DateTime predTime = formatter.parseDateTime(message.getPredictionTime());
     		   DateTime nowTime = formatter.parseDateTime(message.getTimestamp());
     		   int ETA=predTime.getMinuteOfDay()-nowTime.getMinuteOfDay();
-    		   LOGGER.warn("estimate:"+ETA);
+    		   LOGGER.debug("estimate:"+ETA);
     		   message.setEstimate(ETA);
     		   // add it to the list
     		   messageList.add(message);
@@ -82,10 +79,10 @@ public class TrueTimeHandler extends DefaultHandler {
 
     		   if (qName.equalsIgnoreCase(Message.TIMESTAMP)) {
 
-    			   LOGGER.warn("endElement:timestamp="+temp);
+    			   LOGGER.debug("endElement:timestamp="+temp);
     			   message.setTimestamp(temp);
     		   } else if (qName.equalsIgnoreCase(Message.PREDICTION_TIME)) {
-    			   LOGGER.warn("endElement:predictionTime="+temp);
+    			   LOGGER.debug("endElement:predictionTime="+temp);
     			   message.setPredictionTime(temp);
     		   } else if (qName.equalsIgnoreCase(Message.TYPE)) {
     			   message.setType(temp);

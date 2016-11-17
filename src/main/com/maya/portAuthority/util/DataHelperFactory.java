@@ -10,17 +10,17 @@ public class DataHelperFactory {
 
 	
 	public static DataHelper getHelper(Session session, String dataType){
-		
+		log.trace("getHelper:"+dataType);
 		if (dataType.equals(BusStopHelper.NAME)) {
-			log.info("Building BusStopHelper");
+			log.debug("Building BusStopHelper");
 			return new BusStopHelper(session);
 			
 		} else if (dataType.equals(DirectionHelper.NAME)) {
-			log.info("Building DirectionHelper");
+			log.debug("Building DirectionHelper");
 			return new DirectionHelper(session);
 			
 		} else if (dataType.equals(RouteHelper.NAME)) {
-			log.info("Building RouteHelper");
+			log.debug("Building RouteHelper");
 			return new RouteHelper(session);
 			
 		}

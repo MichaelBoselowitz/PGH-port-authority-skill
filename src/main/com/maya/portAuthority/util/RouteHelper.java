@@ -22,11 +22,12 @@ public class RouteHelper extends DataHelper {
 	private Session session;
 
 	public RouteHelper(Session s){
+		log.trace("constructor");
 		this.session=s;
 	}
 
 	public void putValuesInSession(Intent intent){
-		log.trace("putValuesInSession");
+		log.trace("putValuesInSession"+intent.getName());
 
 		String route=getValueFromIntentSlot(intent);
 
@@ -34,16 +35,18 @@ public class RouteHelper extends DataHelper {
 			route=route.replaceAll("\\s+","");
 			session.setAttribute(NAME, route.toUpperCase()); 
 		} else {
-			//log
+			log.error("putValuesInSession:"+intent.getName()+" route is null");
 		}
 	} 
 
 	public String getValueFromIntentSlot(Intent intent){
+		log.trace("getValuesInSession"+intent.getName());
 		Slot slot = intent.getSlot(NAME);
 		return (slot!=null) ? slot.getValue() : null;
 	}
 	
 	public String getValueFromSession(){
+		log.trace("getValueFromSession");
 		if (session.getAttributes().containsKey(NAME)) {
 			return (String) session.getAttribute(NAME);
 		} else {

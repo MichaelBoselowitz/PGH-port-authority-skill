@@ -55,7 +55,9 @@ public class GetNextBusSpeechlet implements Speechlet {
 
 
 	/**PUBLIC METHODS******************************/
-
+/**
+ * called when the skill is first requested and no intent is provided
+ */
 	public SpeechletResponse onLaunch( LaunchRequest request,  Session session)
 			throws SpeechletException {
 		BasicConfigurator.configure();
@@ -63,10 +65,12 @@ public class GetNextBusSpeechlet implements Speechlet {
 				session.getSessionId());
 		return newAskResponse(AUDIO_WELCOME+SPEECH_WELCOME+RouteHelper.SPEECH, RouteHelper.SPEECH);
 	}
-
+/**
+ * Called when an intent is first received, before handing to onIntent. Establishes which 
+ */
 	public void onSessionStarted(SessionStartedRequest request, Session session)
 			throws SpeechletException {
-		log.info("onSessionStarted requestId={}, sessionId={}", request.getRequestId(),
+		log.trace("onSessionStarted requestId={}, sessionId={}", request.getRequestId(),
 				session.getSessionId());
 		//TODO: Not a HASHMAP
 		this.dataHelpers=new HashMap<String, DataHelper>();//createDataHelpers(session);
@@ -75,10 +79,12 @@ public class GetNextBusSpeechlet implements Speechlet {
 		dataHelpers.put(DirectionHelper.INTENT_NAME, DataHelperFactory.getHelper(session, DirectionHelper.NAME));
 	}
 
-
+/**
+ * Called when the user invokes an intent. 
+ */
 	public SpeechletResponse onIntent(IntentRequest request, Session session)
 			throws SpeechletException {
-		//	log.info("onIntent requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
+		//	log.trace("onIntent requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
 
 		SpeechletResponse furtherQuestions;
 		Intent intent = request.getIntent();
@@ -86,8 +92,9 @@ public class GetNextBusSpeechlet implements Speechlet {
 		if (intent.getName().equals("OneshotBusIntent")){
 			Iterator<DataHelper> itr = dataHelpers.values().iterator();
 			while (itr.hasNext()){
-				DataHelper element=itr.next();
-				element.putValuesInSession(intent);
+				DataHelper dataHelper=itr.next();
+				log.info(dataHelper.getIntentName()+":"+dataHelper.getValueFromIntentSlot(intent));
+				dataHelper.putValuesInSession(intent);
 			}
 //		} else if (intent.getName().equals("MainStreetBusIntent")){
 //			DataHelper dataHelper = dataHelpers.get("StationBusIntent");
@@ -95,11 +102,14 @@ public class GetNextBusSpeechlet implements Speechlet {
 			
 		} else { //DirectionBusIntent {Direction} || RouteBusIntent {Route} || StationBusIntent {StationName}
 			DataHelper dataHelper = dataHelpers.get(intent.getName());
+			log.info(dataHelper.getIntentName()+":"+dataHelper.getValueFromIntentSlot(intent));
 			dataHelper.putValuesInSession(intent);
 		}
 
 		if ((furtherQuestions=checkForAdditionalQuestions(session))!=null){
 			return furtherQuestions;
+		} else if (log.isInfoEnabled()){
+			logSession(session, "Returning response for:");
 		}
 
 		// OK, the user has entered everything, now let's find their response
@@ -107,7 +117,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 
 
 		List<Message> stops= getMatchedBusStops(input);
-		//log.info("Found "+stops.size()+ "matching stops");
+		//log.trace("Found "+stops.size()+ "matching stops");
 
 		//if 0 ask again
 		if (stops==null||stops.isEmpty()){
@@ -126,7 +136,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 		List<Message> messages= new ArrayList<Message>();
 		String stationID=stops.get(0).getStopID();
 		String stationName=stops.get(0).getStopName();
-		log.info("Station Name "+stationName+ " matched "+stationID);
+		log.trace("Station Name "+stationName+ " matched "+stationID);
 		messages=TrueTimeMessageParser.getPredictions(input.get(RouteHelper.NAME), stationID);
 
 		// get speech response for all stops
@@ -136,25 +146,26 @@ public class GetNextBusSpeechlet implements Speechlet {
 	public void onSessionEnded(SessionEndedRequest request, Session session)
 			throws SpeechletException {
 
-		log.info("onSessionEnded requestId={}, sessionId={}", request.getRequestId(),
+		log.trace("onSessionEnded requestId={}, sessionId={}", request.getRequestId(),
 				session.getSessionId());
 		this.dataHelpers.clear();
 	}
 
 
 	private SpeechletResponse checkForAdditionalQuestions(Session session) {
-		logSession(session, "checkingForAdditionalQuestions");
-
+		if (log.isTraceEnabled()){
+			logSession(session, "checkingForAdditionalQuestions");
+		}
 		// Do I have all the data I need?
 		Iterator<DataHelper> itr=dataHelpers.values().iterator();	
 		while (itr.hasNext()){
 			DataHelper element=itr.next();
 
 			if (element.getValueFromSession()==null){
-				log.info(element.getName()+":"+element.getValueFromSession()+"==null");
+				log.trace(element.getName()+":"+element.getValueFromSession()+"==null");
 				return newAskResponse(session, element.getSpeech(), element.getSpeech()); 	
 			} else {
-				log.info(element.getName()+":"+element.getValueFromSession()+"!=null");
+				log.trace(element.getName()+":"+element.getValueFromSession()+"!=null");
 			}
 		}
 
@@ -167,11 +178,16 @@ public class GetNextBusSpeechlet implements Speechlet {
 		Iterator<Message> iterator = stops.iterator();
 		while (iterator.hasNext()){
 			Message element=(Message)iterator.next();
-			log.debug("Trying to Match: "+element.getStopName().toUpperCase() + "with "+matchString);
-			//if (element.getStopName().toUpperCase().contains(matchString)){
-			if (match(element.getStopName().toUpperCase(), matchString)){
-				log.debug("found one");
-			}else{
+			if (element.getMessageType().equalsIgnoreCase("error")){
+				log.error(element.getError()+ ": probably no stops found on "+ input.get(BusStopHelper.NAME)+" for "+ input.get(DirectionHelper.NAME) + " "+input.get(RouteHelper.NAME));
+				return null;
+			} else if (element.getMessageType().equalsIgnoreCase("stop")){
+				log.debug("Trying to Match: "+element.getStopName().toUpperCase() + "with "+matchString);
+				//if (element.getStopName().toUpperCase().contains(matchString)){
+				if (!match(element.getStopName().toUpperCase(), matchString)){
+					iterator.remove();
+				}
+			} else {
 				iterator.remove();
 			}
 		}
@@ -184,7 +200,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 		//PlainTextOutputSpeech outputSpeech = new PlainTextOutputSpeech();
 		SimpleCard card = new SimpleCard();
 		int when;
-		log.info("getAnswer... with "+messages.size()+ "messages");
+		log.trace("getAnswer... with "+messages.size()+ "messages");
 		
 
 		try { 
@@ -200,8 +216,9 @@ public class GetNextBusSpeechlet implements Speechlet {
 					log.info("1 error message:"+ messages.get(0).getError());
 					speechOutput=AUDIO_FAILURE+" No "+direction+", "+ busline +" is expected at " + stationName + " in the next 30 minutes  ";
 				} else {
+					log.info(messages.size()+" messages");
 					for (int i=0;i<messages.size();i++){
-						log.info("Message["+i+"]= "+messages.get(i).getMessageType() );
+						log.trace("Message["+i+"]= "+messages.get(i).getMessageType() );
 						when=messages.get(i).getEstimate();
 						if (i==0){ 
 							if (when < 3){
@@ -234,7 +251,9 @@ public class GetNextBusSpeechlet implements Speechlet {
 	}
 
 	private SpeechletResponse newAskResponse (Session session, String output, String reprompt){
-		this.logSession(session, "newAskResponse");
+		if (log.isTraceEnabled()){
+			this.logSession(session, "newAskResponse");
+		}
 		return newAskResponse(output, reprompt);
 	}
 

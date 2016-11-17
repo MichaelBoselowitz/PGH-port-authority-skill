@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 public class DirectionHelper extends DataHelper {
 	public static final String INTENT_NAME="DirectionBusIntent";
 	public static final String NAME = "Direction";
-	public static final String SPEECH ="Which direction are you travelling?";
+	public static final String SPEECH ="Which direction are you <w role=\"ivona:NN\">traveling</w>, inbound or outbound ?";
 	
 	private static  Logger log = LoggerFactory.getLogger(DirectionHelper.class);
 
@@ -22,6 +22,7 @@ public class DirectionHelper extends DataHelper {
 	//private Intent intent;
 
 	public DirectionHelper(Session s){
+		log.trace("constructor");
 		this.session=s;
 	}
 
@@ -30,7 +31,7 @@ public class DirectionHelper extends DataHelper {
 
 		String direction=getValueFromIntentSlot(intent);
 		if (direction!=null){
-			session.setAttribute(NAME, direction.toUpperCase()); 
+			session.setAttribute(NAME, direction.toUpperCase());
 		} else {
 			//log
 		}
@@ -38,11 +39,13 @@ public class DirectionHelper extends DataHelper {
 
 	@Override
 	public String getValueFromIntentSlot(Intent i){
+		log.trace("getValuesFromIntentSlot:"+i.getName());
 		Slot slot = i.getSlot(NAME);
 		return (slot!=null) ? slot.getValue() : null;
 	}
 	
 	public String getValueFromSession(){
+		log.trace("getValuesFromSession");
 		if (session.getAttributes().containsKey(NAME)) {
 			return (String) session.getAttribute(NAME);
 		} else {
