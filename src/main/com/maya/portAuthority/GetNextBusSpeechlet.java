@@ -206,29 +206,39 @@ public class GetNextBusSpeechlet implements Speechlet {
 		try { 
 			//Define speech output
 			String speechOutput = "";
+			String textOutput = "";
 
 			if (messages.size()==0){
 				log.info("No Messages");
-				speechOutput=AUDIO_FAILURE+" No "+direction+", "+ busline +" is expected at " + stationName + " in the next 30 minutes  ";
+				
+				textOutput=" No "+direction+", "+ busline +" is expected at " + stationName + " in the next 30 minutes  ";
+				speechOutput=AUDIO_FAILURE+textOutput;
 
 			} else {
 				if ((messages.size()==1)&&(messages.get(0).getMessageType().equals(Message.ERROR))){
-					log.info("1 error message:"+ messages.get(0).getError());
-					speechOutput=AUDIO_FAILURE+" No "+direction+", "+ busline +" is expected at " + stationName + " in the next 30 minutes  ";
+					log.error("1 error message:"+ messages.get(0).getError());
+					textOutput=" No "+direction+", "+ busline +" is expected at " + stationName + " in the next 30 minutes  ";
+					speechOutput=AUDIO_FAILURE+textOutput;
 				} else {
 					log.info(messages.size()+" messages");
+					
 					for (int i=0;i<messages.size();i++){
 						log.trace("Message["+i+"]= "+messages.get(i).getMessageType() );
 						when=messages.get(i).getEstimate();
 						if (i==0){ 
 							if (when < 3){
+								textOutput="An "+direction+" "+busline+ 
+										" is arriving at " + stationName +" now ";
 								speechOutput=AUDIO_SUCCESS+"An "+direction+" "+busline+ 
 										" is arriving at " + stationName +" <break time=\"0.1s\" /> now ";
 							} else {
-								speechOutput=AUDIO_SUCCESS+"An "+direction+" "+busline+ 
+								textOutput="An "+direction+" "+busline+ 
 										" will be arriving at " + stationName + " in "+when+" minutes ";
+								speechOutput=AUDIO_SUCCESS+textOutput;
+								
 							}
 						} else {
+							textOutput=textOutput+ " ... and another in "+when+" minutes"; 
 							speechOutput=speechOutput+" <break time=\"0.25s\" /> and another in "+when+" minutes";
 						}
 					}
@@ -238,7 +248,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 			// Create the Simple card content.
 
 			card.setTitle("Pittsburgh Port Authority");
-			card.setContent(speechOutput);
+			card.setContent(textOutput);
 
 			// Create the plain text output
 			//outputSpeech.setText(speechOutput);
