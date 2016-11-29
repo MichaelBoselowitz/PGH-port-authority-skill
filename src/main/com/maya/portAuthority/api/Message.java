@@ -15,7 +15,8 @@ public class Message implements Comparable<Message>{
 	static final String STOP_NAME ="stpnm";
 	static final String VEHICLE_ID ="vid";
 	static final String DISTANCE_TO_STOP ="dstp";
-	static final String ROUTE ="rt";
+	static final String ROUTE_ID ="rt";
+	static final String ROUTE_NAME ="rtnm";
 	static final String DIRECTION ="rtdir";
 	static final String DESTINATION ="des";
 	static final String PREDICTION_TIME ="prdtm";
@@ -27,6 +28,7 @@ public class Message implements Comparable<Message>{
 	//Message Types
 	public static final String PREDICTION="prd";
 	public static final String STOP="stop";
+	public static final String ROUTE="route";
 	public static final String ERROR = "error";
 	
     static SimpleDateFormat FORMATTER = new SimpleDateFormat("YYYYMMDD HH:MM");
@@ -35,6 +37,7 @@ public class Message implements Comparable<Message>{
      * static final String PREDICTION="prd";
      * static final String STOP="stop";
      * static final String ERROR = "error";
+     * static final String ROUTE = "route"
      */
     	private String messageType;
     	
@@ -78,9 +81,15 @@ public class Message implements Comparable<Message>{
     /**
      * Alphanumeric designator of the route (ex. "20" or "X20") for which this prediction was generated.
      */
-    private String route;//<xs:element name="rt" type="xs:string" minOccurs="1" maxOccurs="1"/>
+    private String routeID;//<xs:element name="rt" type="xs:string" minOccurs="1" maxOccurs="1"/>
     
     /**
+     * Common name of the route (ex. "Madison" for the 20 route).
+     */
+    private String routeName; //<xs:element name="rtnm" type="xs:string" minOccurs="1" maxOccurs="1"/>
+   
+
+	/**
      * Direction of travel of the route associated with this prediction (ex. "East Bound").
      */
     private String direction;//<xs:element name="rtdir" type="xs:string" minOccurs="1" maxOccurs="1"/>
@@ -192,12 +201,20 @@ public class Message implements Comparable<Message>{
 		this.distanceToStop = distanceToStop;
 	}
 
-	public String getRoute() {
-		return route;
+	public String getRouteID() {
+		return routeID;
 	}
 
-	public void setRoute(String route) {
-		this.route = route;
+	public void setRouteID(String routeID) {
+		this.routeID = routeID;
+	}
+	
+    public String getRouteName() {
+		return routeName;
+	}
+
+	public void setRouteName(String routeName) {
+		this.routeName = routeName;
 	}
 
 	public String getDirection() {

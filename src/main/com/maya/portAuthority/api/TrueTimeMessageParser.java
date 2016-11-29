@@ -23,6 +23,7 @@ public class TrueTimeMessageParser extends BaseAPIParser {
 	public static final String VERSION="v1/";
 	public static final String CMD_PREDICTION="getpredictions";
 	public static final String CMD_STOPS="getstops";
+	public static final String CMD_ROUTES="getroutes";
 	//public static final String PREDICTION_URL="http://truetime.portauthority.org/bustime/api/v1/getpredictions";
 	//public static final String STOPS_URL="http://truetime.portauthority.org/bustime/api/v1/getstops";
 	public static final String ACCESS_ID="cvTWAYXjbFEGcMSQbnv5tpteK";
@@ -206,13 +207,27 @@ public class TrueTimeMessageParser extends BaseAPIParser {
 	/**
 	 * 
 	 * @return
+	 * error	Contains a message if the processing of the request resulted in an error.
+	 * route	Encapsulates a route serviced by the system.
+	 * rt	Child element of the route element. Alphanumeric designator of a route (ex. "20" or "X20").
+	 * rtnm	Child element of the route element. Common name of the route (ex. "Madison" for the 20 route).
+	 * rtclr	Child element of the route element. Color of the route line used in map (ex. "#ffffff")
+	 * rtdd	Child element of the route element. Language-specific route designator meant for display.
 	 */
-	public List<Message> getRoutes(){
-		List<Message> retval= new ArrayList<Message>();
-		Message msg=new Message();
-		msg.setError("TrueTimeMessageParser method notImplemented");
-		retval.add(msg);
-		return retval;
+	public static List<Message> getRoutes(){
+		String apiString= TRUETIME_URL+VERSION+CMD_ROUTES+"?key="+ACCESS_ID;
+		LOGGER.debug("getRoutes:apiString="+apiString);
+		List<Message> messages=new ArrayList<Message>();
+		try {
+			messages= TrueTimeMessageParser.parse(apiString);
+		} catch (IOException | SAXException | ParserConfigurationException e) {
+			messages.clear();
+			Message errorMsg=new Message();
+			errorMsg.setError(e.getMessage());
+			messages.add(errorMsg);
+		}
+		LOGGER.debug("getRoutes:messages size"+messages.size());
+		return messages;
 	}
 
 	/**

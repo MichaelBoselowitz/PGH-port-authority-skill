@@ -86,31 +86,37 @@ public class GetNextBusSpeechlet implements Speechlet {
 			throws SpeechletException {
 		//	log.trace("onIntent requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
 
-		SpeechletResponse furtherQuestions;
-		Intent intent = request.getIntent();
+		try {
+			Intent intent = request.getIntent();
 
-		if (intent.getName().equals("OneshotBusIntent")){
-			Iterator<DataHelper> itr = dataHelpers.values().iterator();
-			while (itr.hasNext()){
-				DataHelper dataHelper=itr.next();
+			if (intent.getName().equals("OneshotBusIntent")){
+				Iterator<DataHelper> itr = dataHelpers.values().iterator();
+				while (itr.hasNext()){
+					DataHelper dataHelper=itr.next();
+					log.info(dataHelper.getIntentName()+":"+dataHelper.getValueFromIntentSlot(intent));
+					dataHelper.putValuesInSession(intent);
+				}
+
+			} else { //DirectionBusIntent {Direction} || RouteBusIntent {Route} || StationBusIntent {StationName}
+				DataHelper dataHelper = dataHelpers.get(intent.getName());
 				log.info(dataHelper.getIntentName()+":"+dataHelper.getValueFromIntentSlot(intent));
+				//validate input
 				dataHelper.putValuesInSession(intent);
 			}
-//		} else if (intent.getName().equals("MainStreetBusIntent")){
-//			DataHelper dataHelper = dataHelpers.get("StationBusIntent");
-//			dataHelper.putValuesInSession(intent);
+		} catch (InvalidInputException e) {
 			
-		} else { //DirectionBusIntent {Direction} || RouteBusIntent {Route} || StationBusIntent {StationName}
-			DataHelper dataHelper = dataHelpers.get(intent.getName());
-			log.info(dataHelper.getIntentName()+":"+dataHelper.getValueFromIntentSlot(intent));
-			dataHelper.putValuesInSession(intent);
+			return newAskResponse(session, e.getSpeech(), e.getSpeech()); 
 		}
 
+		
+		SpeechletResponse furtherQuestions;
 		if ((furtherQuestions=checkForAdditionalQuestions(session))!=null){
 			return furtherQuestions;
 		} else if (log.isInfoEnabled()){
 			logSession(session, "Returning response for:");
 		}
+		
+
 
 		// OK, the user has entered everything, now let's find their response
 		Map<String, String> input = getInputValuesFromSession();

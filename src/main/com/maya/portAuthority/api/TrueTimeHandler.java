@@ -46,6 +46,7 @@ public class TrueTimeHandler extends DefaultHandler {
               temp = "";
               if (qName.equalsIgnoreCase(Message.PREDICTION)||
             		  qName.equalsIgnoreCase(Message.STOP)||
+            		  qName.equalsIgnoreCase(Message.ROUTE)||
             		  qName.equalsIgnoreCase(Message.ERROR)) {
           		
                      message = new Message();
@@ -75,6 +76,8 @@ public class TrueTimeHandler extends DefaultHandler {
     		   messageList.add(message);   
     	   } else if (qName.equalsIgnoreCase(Message.ERROR)) {
     		   messageList.add(message);   
+    	   } else if (qName.equalsIgnoreCase(Message.ROUTE)) {
+    		   messageList.add(message);   
     	   } else {
 
     		   if (qName.equalsIgnoreCase(Message.TIMESTAMP)) {
@@ -94,8 +97,10 @@ public class TrueTimeHandler extends DefaultHandler {
     			   //    		   TODO: message.setVehicleID(VID);
     		   } else if (qName.equalsIgnoreCase(Message.DISTANCE_TO_STOP)) {
     			   //    		   TODO: message.setDistanceToStop(distanceToStop);
-    		   } else if (qName.equalsIgnoreCase(Message.ROUTE)) {
-    			   message.setRoute(temp);
+    		   } else if (qName.equalsIgnoreCase(Message.ROUTE_ID)) {
+    			   message.setRouteID(temp);
+    		   } else if (qName.equalsIgnoreCase(Message.ROUTE_NAME)) {
+    			   message.setRouteName(temp);
     		   } else if (qName.equalsIgnoreCase(Message.DIRECTION)) {
     			   message.setDirection(temp);
     		   } else if (qName.equalsIgnoreCase(Message.DESTINATION)) {
