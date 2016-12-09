@@ -1,5 +1,8 @@
 package com.maya.portAuthority.storage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
 
@@ -7,6 +10,7 @@ import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
  * Client for DynamoDB persistance layer for the Score Keeper skill.
  */
 public class PaDynamoDbClient {
+	private static Logger log = LoggerFactory.getLogger(PaDynamoDbClient.class);
     private final AmazonDynamoDBClient dynamoDBClient;
 
     public PaDynamoDbClient(final AmazonDynamoDBClient dynamoDBClient) {

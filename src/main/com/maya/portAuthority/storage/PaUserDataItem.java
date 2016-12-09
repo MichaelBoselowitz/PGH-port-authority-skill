@@ -1,5 +1,8 @@
 package com.maya.portAuthority.storage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBAttribute;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBHashKey;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMarshaller;
@@ -13,8 +16,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * Model representing an item of the PaUserData table in DynamoDB for the ScoreKeeper
  * skill.
  */
-@DynamoDBTable(tableName = "PaUserData")
+@DynamoDBTable(tableName = "PPAAS_User_Data")
 public class PaUserDataItem {
+	private static Logger log = LoggerFactory.getLogger(PaUserDataItem.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private String customerId;
@@ -36,9 +40,11 @@ public class PaUserDataItem {
         return inputData;
     }
 
-    public void setGameData(PaInputData inputData) {
+	public void setInputData(PaInputData inputData) {
         this.inputData = inputData;
-    }
+		
+	}
+  
 
     /**
      * A {@link DynamoDBMarshaller} that provides marshalling and unmarshalling logic for
@@ -46,7 +52,7 @@ public class PaUserDataItem {
      */
     public static class PaInputDataMarshaller implements
             DynamoDBMarshaller<PaInputData> {
-
+    	private static Logger log = LoggerFactory.getLogger(PaInputDataMarshaller.class);
         @Override
         public String marshall(PaInputData inputData) {
             try {
@@ -66,4 +72,6 @@ public class PaUserDataItem {
             }
         }
     }
+
+
 }

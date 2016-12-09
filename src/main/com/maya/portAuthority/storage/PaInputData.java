@@ -1,11 +1,13 @@
 package com.maya.portAuthority.storage;
 
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 
  */
 public class PaInputData {
+	private static Logger log = LoggerFactory.getLogger(PaInputData.class);
     private String location;
     private String busstop;
     private String route;

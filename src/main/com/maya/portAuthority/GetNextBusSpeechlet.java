@@ -27,219 +27,260 @@ import com.amazon.speech.speechlet.SpeechletException;
 import com.amazon.speech.speechlet.SpeechletResponse;
 import com.amazon.speech.ui.PlainTextOutputSpeech;
 import com.amazon.speech.ui.SsmlOutputSpeech;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazon.speech.ui.Reprompt;
 import com.amazon.speech.ui.SimpleCard;
 import com.maya.portAuthority.api.Message;
 import com.maya.portAuthority.api.TrueTimeMessageParser;
+import com.maya.portAuthority.storage.PaDao;
+import com.maya.portAuthority.storage.PaDynamoDbClient;
+import com.maya.portAuthority.storage.PaInput;
+import com.maya.portAuthority.storage.PaInputData;
 import com.maya.portAuthority.util.*;
 
 public class GetNextBusSpeechlet implements Speechlet {
-	private static  Logger log = LoggerFactory.getLogger(GetNextBusSpeechlet.class);
+	private static Logger log = LoggerFactory.getLogger(GetNextBusSpeechlet.class);
 
-	private static  String SPEECH_NO_SUCH_STATION="I can't find that station. Please say again.";
+	private static String SPEECH_NO_SUCH_STATION = "I can't find that station. Please say again.";
 
-	private static  String SPEECH_INSTRUCTIONS=
-			"I can lead you through providing a bus line, direction, and "
-					+ "bus stop to get departure information, "
-					+ "or you can simply open Port Authroity and ask a question like, "
-					+ "when is the next outbound P1 leaving sixth and smithfield. "
-					+ "For a list of supported buslines, ask what bus lines are supported. ";
+	private static String SPEECH_INSTRUCTIONS = "I can lead you through providing a bus line, direction, and "
+			+ "bus stop to get departure information, "
+			+ "or you can simply open Port Authroity and ask a question like, "
+			+ "when is the next outbound P1 leaving sixth and smithfield. "
+			+ "For a list of supported buslines, ask what bus lines are supported. ";
 
-	private static  String SPEECH_WELCOME="Welcome to Pittsburgh Port Authority ";
+	private static String SPEECH_WELCOME = "Welcome to Pittsburgh Port Authority ";
+
+	private static String AUDIO_WELCOME = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_welcome.mp3\" />";
+	private static String AUDIO_FAILURE = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_failure.mp3\" />";
+	private static String AUDIO_SUCCESS = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_success.mp3\" />";
+
 	
-	private static String AUDIO_WELCOME="<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_welcome.mp3\" />";
-	private static String AUDIO_FAILURE="<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_failure.mp3\" />";
-	private static String AUDIO_SUCCESS="<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_success.mp3\" />";
-	
+
+	private SkillContext skillContext;
+
 	private Map<String, DataHelper> dataHelpers;
+	
+	private AmazonDynamoDBClient amazonDynamoDBClient;
+	private PaDynamoDbClient dynamoDbClient;
+	private PaDao inputDao;
+	
 
-
-	/**PUBLIC METHODS******************************/
-/**
- * called when the skill is first requested and no intent is provided
- */
-	public SpeechletResponse onLaunch( LaunchRequest request,  Session session)
-			throws SpeechletException {
+	/** PUBLIC METHODS ******************************/
+	/**
+	 * called when the skill is first requested and no intent is provided
+	 */
+	public SpeechletResponse onLaunch(LaunchRequest request, Session session) throws SpeechletException {
 		BasicConfigurator.configure();
-		log.info("onLaunch requestId={}, sessionId={}", request.getRequestId(),
-				session.getSessionId());
-		return newAskResponse(AUDIO_WELCOME+SPEECH_WELCOME+RouteHelper.SPEECH, RouteHelper.SPEECH);
+		log.info("onLaunch requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
+		skillContext = new SkillContext();
+
+		if (amazonDynamoDBClient == null) {
+			amazonDynamoDBClient = new AmazonDynamoDBClient();
+
+		}
+
+		dynamoDbClient = new PaDynamoDbClient(amazonDynamoDBClient);
+		inputDao = new PaDao(dynamoDbClient);
+		PaInput input = inputDao.getPaInput(session);
+		if ((input != null) && input.hasAllData()){
+			return buildResponse(getInputValuesFromDAO(input.getData()));
+		} else {
+			return newAskResponse(AUDIO_WELCOME + SPEECH_WELCOME + RouteHelper.SPEECH, RouteHelper.SPEECH);
+		}
 	}
-/**
- * Called when an intent is first received, before handing to onIntent. Establishes which 
- */
-	public void onSessionStarted(SessionStartedRequest request, Session session)
-			throws SpeechletException {
-		log.trace("onSessionStarted requestId={}, sessionId={}", request.getRequestId(),
-				session.getSessionId());
-		//TODO: Not a HASHMAP
-		this.dataHelpers=new HashMap<String, DataHelper>();//createDataHelpers(session);
+
+	/**
+	 * Called when an intent is first received, before handing to onIntent.
+	 * Establishes which
+	 */
+	public void onSessionStarted(SessionStartedRequest request, Session session) throws SpeechletException {
+		log.info("onSessionStarted requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
+		// TODO: Not a HASHMAP
+		this.dataHelpers = new HashMap<String, DataHelper>();// createDataHelpers(session);
 		dataHelpers.put(RouteHelper.INTENT_NAME, DataHelperFactory.getHelper(session, RouteHelper.NAME));
 		dataHelpers.put(BusStopHelper.INTENT_NAME, DataHelperFactory.getHelper(session, BusStopHelper.NAME));
 		dataHelpers.put(DirectionHelper.INTENT_NAME, DataHelperFactory.getHelper(session, DirectionHelper.NAME));
 	}
 
-/**
- * Called when the user invokes an intent. 
- */
-	public SpeechletResponse onIntent(IntentRequest request, Session session)
-			throws SpeechletException {
-		//	log.trace("onIntent requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
+	/**
+	 * Called when the user invokes an intent.
+	 */
+	public SpeechletResponse onIntent(IntentRequest request, Session session) throws SpeechletException {
+	     log.info("onIntent requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
 
 		SpeechletResponse furtherQuestions;
 		Intent intent = request.getIntent();
 
-		if (intent.getName().equals("OneshotBusIntent")){
+		if (intent.getName().equals("OneshotBusIntent")) {
 			Iterator<DataHelper> itr = dataHelpers.values().iterator();
-			while (itr.hasNext()){
-				DataHelper dataHelper=itr.next();
-				log.info(dataHelper.getIntentName()+":"+dataHelper.getValueFromIntentSlot(intent));
+			while (itr.hasNext()) {
+				DataHelper dataHelper = itr.next();
+				log.info(dataHelper.getIntentName() + ":" + dataHelper.getValueFromIntentSlot(intent));
 				dataHelper.putValuesInSession(intent);
 			}
-//		} else if (intent.getName().equals("MainStreetBusIntent")){
-//			DataHelper dataHelper = dataHelpers.get("StationBusIntent");
-//			dataHelper.putValuesInSession(intent);
-			
-		} else { //DirectionBusIntent {Direction} || RouteBusIntent {Route} || StationBusIntent {StationName}
+			// } else if (intent.getName().equals("MainStreetBusIntent")){
+			// DataHelper dataHelper = dataHelpers.get("StationBusIntent");
+			// dataHelper.putValuesInSession(intent);
+
+		} else { // DirectionBusIntent {Direction} || RouteBusIntent {Route} ||
+					// StationBusIntent {StationName}
 			DataHelper dataHelper = dataHelpers.get(intent.getName());
-			log.info(dataHelper.getIntentName()+":"+dataHelper.getValueFromIntentSlot(intent));
+			log.info(dataHelper.getIntentName() + ":" + dataHelper.getValueFromIntentSlot(intent));
 			dataHelper.putValuesInSession(intent);
 		}
 
-		if ((furtherQuestions=checkForAdditionalQuestions(session))!=null){
+		if ((furtherQuestions = checkForAdditionalQuestions(session)) != null) {
 			return furtherQuestions;
-		} else if (log.isInfoEnabled()){
+		} else if (log.isInfoEnabled()) {
 			logSession(session, "Returning response for:");
 		}
 
-		// OK, the user has entered everything, now let's find their response
-		Map<String, String> input = getInputValuesFromSession();
+		//TODO: Make Session Data be a PaInput
+		// OK, the user has entered everything, save their entries
+		Map<String,String> sessionData= getInputValuesFromSession();
+		PaInputData data=PaInputData.newInstance();
+		data.setBusstop(sessionData.get(BusStopHelper.NAME));
+		data.setDirection(sessionData.get(DirectionHelper.NAME));
+		data.setRoute(sessionData.get(RouteHelper.NAME));
+		saveInputToDB(PaInput.newInstance(session, data));
+		
+		// now let's find their response
+		return buildResponse(sessionData);
+	}
+	
+		private SpeechletResponse buildResponse(Map <String, String> input){
+		List<Message> stops = getMatchedBusStops(input);
+		// log.trace("Found "+stops.size()+ "matching stops");
 
-
-		List<Message> stops= getMatchedBusStops(input);
-		//log.trace("Found "+stops.size()+ "matching stops");
-
-		//if 0 ask again
-		if (stops==null||stops.isEmpty()){
-			return newAskResponse(AUDIO_FAILURE+"I cannot find a stop that matches. "+input.get(BusStopHelper.NAME)+
-					" <break time=\"0.1s\" /> for "+input.get(DirectionHelper.NAME)+" "+input.get(RouteHelper.NAME) + 
-					" <break time=\"0.1s\" /> "+BusStopHelper.SPEECH,
+		// if 0 ask again
+		if (stops == null || stops.isEmpty()) {
+			return newAskResponse(
+					AUDIO_FAILURE + "I cannot find a stop that matches. " + input.get(BusStopHelper.NAME)
+							+ " <break time=\"0.1s\" /> for " + input.get(DirectionHelper.NAME) + " "
+							+ input.get(RouteHelper.NAME) + " <break time=\"0.1s\" /> " + BusStopHelper.SPEECH,
 					BusStopHelper.SPEECH);
 		}
 
-//		if (stops.size()>1){
-//			String speechOutput = "I found several stops that match. try specifying a cross street.";
-//			return newAskResponse(speechOutput+BusStopHelper.SPEECH,BusStopHelper.SPEECH);
-//		}
+		// if (stops.size()>1){
+		// String speechOutput = "I found several stops that match. try
+		// specifying a cross street.";
+		// return
+		// newAskResponse(speechOutput+BusStopHelper.SPEECH,BusStopHelper.SPEECH);
+		// }
 
-		//if 1 find answer and respond
-		List<Message> messages= new ArrayList<Message>();
-		String stationID=stops.get(0).getStopID();
-		String stationName=stops.get(0).getStopName();
-		log.trace("Station Name "+stationName+ " matched "+stationID);
-		messages=TrueTimeMessageParser.getPredictions(input.get(RouteHelper.NAME), stationID);
+		// if 1 find answer and respond
+		List<Message> messages = new ArrayList<Message>();
+		String stationID = stops.get(0).getStopID();
+		String stationName = stops.get(0).getStopName();
+		log.trace("Station Name " + stationName + " matched " + stationID);
+		
+		messages = TrueTimeMessageParser.getPredictions(input.get(RouteHelper.NAME), stationID);
 
 		// get speech response for all stops
-		return getAnswer (messages, input.get(RouteHelper.NAME), stationName, input.get(DirectionHelper.NAME));
+		
+		return getAnswer(messages, input.get(RouteHelper.NAME), stationName, input.get(DirectionHelper.NAME));
 	}
 
-	public void onSessionEnded(SessionEndedRequest request, Session session)
-			throws SpeechletException {
+	public void onSessionEnded(SessionEndedRequest request, Session session) throws SpeechletException {
 
-		log.trace("onSessionEnded requestId={}, sessionId={}", request.getRequestId(),
-				session.getSessionId());
+		log.trace("onSessionEnded requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
 		this.dataHelpers.clear();
 	}
 
-
 	private SpeechletResponse checkForAdditionalQuestions(Session session) {
-		if (log.isTraceEnabled()){
+		if (log.isTraceEnabled()) {
 			logSession(session, "checkingForAdditionalQuestions");
 		}
 		// Do I have all the data I need?
-		Iterator<DataHelper> itr=dataHelpers.values().iterator();	
-		while (itr.hasNext()){
-			DataHelper element=itr.next();
+		Iterator<DataHelper> itr = dataHelpers.values().iterator();
+		while (itr.hasNext()) {
+			DataHelper element = itr.next();
 
-			if (element.getValueFromSession()==null){
-				log.trace(element.getName()+":"+element.getValueFromSession()+"==null");
-				return newAskResponse(session, element.getSpeech(), element.getSpeech()); 	
+			if (element.getValueFromSession() == null) {
+				log.trace(element.getName() + ":" + element.getValueFromSession() + "==null");
+				return newAskResponse(session, element.getSpeech(), element.getSpeech());
 			} else {
-				log.trace(element.getName()+":"+element.getValueFromSession()+"!=null");
+				log.trace(element.getName() + ":" + element.getValueFromSession() + "!=null");
 			}
 		}
 
 		return null;
 	}
 
-	private List<Message> getMatchedBusStops(Map<String, String> input){
-		String matchString=input.get(BusStopHelper.NAME);
-		List<Message> stops = TrueTimeMessageParser.getStops(input.get(RouteHelper.NAME),input.get(DirectionHelper.NAME));
+	private List<Message> getMatchedBusStops(Map<String, String> input) {
+		String matchString = input.get(BusStopHelper.NAME);
+		List<Message> stops = TrueTimeMessageParser.getStops(input.get(RouteHelper.NAME),
+				input.get(DirectionHelper.NAME));
 		Iterator<Message> iterator = stops.iterator();
-		while (iterator.hasNext()){
-			Message element=(Message)iterator.next();
-			if (element.getMessageType().equalsIgnoreCase("error")){
-				log.error(element.getError()+ ": probably no stops found on "+ input.get(BusStopHelper.NAME)+" for "+ input.get(DirectionHelper.NAME) + " "+input.get(RouteHelper.NAME));
+		while (iterator.hasNext()) {
+			Message element = (Message) iterator.next();
+			if (element.getMessageType().equalsIgnoreCase("error")) {
+				log.error(element.getError() + ": probably no stops found on " + input.get(BusStopHelper.NAME) + " for "
+						+ input.get(DirectionHelper.NAME) + " " + input.get(RouteHelper.NAME));
 				return null;
-			} else if (element.getMessageType().equalsIgnoreCase("stop")){
-				log.debug("Trying to Match: "+element.getStopName().toUpperCase() + "with "+matchString);
-				//if (element.getStopName().toUpperCase().contains(matchString)){
-				if (!match(element.getStopName().toUpperCase(), matchString)){
+			} else if (element.getMessageType().equalsIgnoreCase("stop")) {
+				log.debug("Trying to Match: " + element.getStopName().toUpperCase() + "with " + matchString);
+				// if
+				// (element.getStopName().toUpperCase().contains(matchString)){
+				if (!match(element.getStopName().toUpperCase(), matchString)) {
 					iterator.remove();
 				}
 			} else {
 				iterator.remove();
 			}
 		}
-	return stops;
+		return stops;
 
 	}
 
-	private SpeechletResponse getAnswer(List<Message> messages, String busline , String stationName, String direction) {
-		SsmlOutputSpeech outputSpeech= new SsmlOutputSpeech();
-		//PlainTextOutputSpeech outputSpeech = new PlainTextOutputSpeech();
+	private SpeechletResponse getAnswer(List<Message> messages, String busline, String stationName, String direction) {
+		SsmlOutputSpeech outputSpeech = new SsmlOutputSpeech();
+		// PlainTextOutputSpeech outputSpeech = new PlainTextOutputSpeech();
 		SimpleCard card = new SimpleCard();
 		int when;
-		log.trace("getAnswer... with "+messages.size()+ "messages");
-		
+		log.trace("getAnswer... with " + messages.size() + "messages");
 
-		try { 
-			//Define speech output
+		try {
+			// Define speech output
 			String speechOutput = "";
 			String textOutput = "";
 
-			if (messages.size()==0){
+			if (messages.size() == 0) {
 				log.info("No Messages");
-				
-				textOutput=" No "+direction+", "+ busline +" is expected at " + stationName + " in the next 30 minutes  ";
-				speechOutput=AUDIO_FAILURE+textOutput;
+
+				textOutput = " No " + direction + ", " + busline + " is expected at " + stationName
+						+ " in the next 30 minutes  ";
+				speechOutput = AUDIO_FAILURE + textOutput;
 
 			} else {
-				if ((messages.size()==1)&&(messages.get(0).getMessageType().equals(Message.ERROR))){
-					log.error("1 error message:"+ messages.get(0).getError());
-					textOutput=" No "+direction+", "+ busline +" is expected at " + stationName + " in the next 30 minutes  ";
-					speechOutput=AUDIO_FAILURE+textOutput;
+				if ((messages.size() == 1) && (messages.get(0).getMessageType().equals(Message.ERROR))) {
+					log.error("1 error message:" + messages.get(0).getError());
+					textOutput = " No " + direction + ", " + busline + " is expected at " + stationName
+							+ " in the next 30 minutes  ";
+					speechOutput = AUDIO_FAILURE + textOutput;
 				} else {
-					log.info(messages.size()+" messages");
-					
-					for (int i=0;i<messages.size();i++){
-						log.trace("Message["+i+"]= "+messages.get(i).getMessageType() );
-						when=messages.get(i).getEstimate();
-						if (i==0){ 
-							if (when < 3){
-								textOutput="An "+direction+" "+busline+ 
-										" is arriving at " + stationName +" now ";
-								speechOutput=AUDIO_SUCCESS+"An "+direction+" "+busline+ 
-										" is arriving at " + stationName +" <break time=\"0.1s\" /> now ";
+					log.info(messages.size() + " messages");
+
+					for (int i = 0; i < messages.size(); i++) {
+						log.trace("Message[" + i + "]= " + messages.get(i).getMessageType());
+						when = messages.get(i).getEstimate();
+						if (i == 0) {
+							if (when < 3) {
+								textOutput = "An " + direction + " " + busline + " is arriving at " + stationName
+										+ " now ";
+								speechOutput = AUDIO_SUCCESS + "An " + direction + " " + busline + " is arriving at "
+										+ stationName + " <break time=\"0.1s\" /> now ";
 							} else {
-								textOutput="An "+direction+" "+busline+ 
-										" will be arriving at " + stationName + " in "+when+" minutes ";
-								speechOutput=AUDIO_SUCCESS+textOutput;
-								
+								textOutput = "An " + direction + " " + busline + " will be arriving at " + stationName
+										+ " in " + when + " minutes ";
+								speechOutput = AUDIO_SUCCESS + textOutput;
+
 							}
 						} else {
-							textOutput=textOutput+ " ... and another in "+when+" minutes"; 
-							speechOutput=speechOutput+" <break time=\"0.25s\" /> and another in "+when+" minutes";
+							textOutput = textOutput + " ... and another in " + when + " minutes";
+							speechOutput = speechOutput + " <break time=\"0.25s\" /> and another in " + when
+									+ " minutes";
 						}
 					}
 				}
@@ -251,8 +292,8 @@ public class GetNextBusSpeechlet implements Speechlet {
 			card.setContent(textOutput);
 
 			// Create the plain text output
-			//outputSpeech.setText(speechOutput);
-			outputSpeech.setSsml("<speak> "+speechOutput+"</speak>");
+			// outputSpeech.setText(speechOutput);
+			outputSpeech.setSsml("<speak> " + speechOutput + "</speak>");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -260,13 +301,12 @@ public class GetNextBusSpeechlet implements Speechlet {
 		return SpeechletResponse.newTellResponse(outputSpeech, card);
 	}
 
-	private SpeechletResponse newAskResponse (Session session, String output, String reprompt){
-		if (log.isTraceEnabled()){
+	private SpeechletResponse newAskResponse(Session session, String output, String reprompt) {
+		if (log.isTraceEnabled()) {
 			this.logSession(session, "newAskResponse");
 		}
 		return newAskResponse(output, reprompt);
 	}
-
 
 	/**
 	 * Wrapper for creating the Ask response from the input strings.
@@ -274,95 +314,116 @@ public class GetNextBusSpeechlet implements Speechlet {
 	 * @param stringOutput
 	 *            the output to be spoken
 	 * @param repromptText
-	 *            the reprompt for if the user doesn't reply or is misunderstood.
+	 *            the reprompt for if the user doesn't reply or is
+	 *            misunderstood.
 	 * @return SpeechletResponse the speechlet response
 	 */
 	private SpeechletResponse newAskResponse(String stringOutput, String repromptText) {
-		//PlainTextOutputSpeech outputSpeech = new PlainTextOutputSpeech();
-		//outputSpeech.setText(stringOutput);
+		// PlainTextOutputSpeech outputSpeech = new PlainTextOutputSpeech();
+		// outputSpeech.setText(stringOutput);
 		SsmlOutputSpeech outputSpeech = new SsmlOutputSpeech();
-		outputSpeech.setSsml("<speak> "+stringOutput+" </speak>");
-		
+		outputSpeech.setSsml("<speak> " + stringOutput + " </speak>");
+
 		PlainTextOutputSpeech repromptOutputSpeech = new PlainTextOutputSpeech();
 		repromptOutputSpeech.setText(repromptText);
-		//SsmlOutputSpeech repromptOutputSpeech = new SsmlOutputSpeech();
-		//repromptOutputSpeech.setSsml(repromptText);
+		// SsmlOutputSpeech repromptOutputSpeech = new SsmlOutputSpeech();
+		// repromptOutputSpeech.setSsml(repromptText);
 
 		Reprompt reprompt = new Reprompt();
 		reprompt.setOutputSpeech(repromptOutputSpeech);
 		return SpeechletResponse.newAskResponse(outputSpeech, reprompt);
 	}
+
 	/**
 	 * Helper method to log the data currently stored in session.
+	 * 
 	 * @param session
 	 * @param intro
 	 */
-	private void logSession(Session session, String intro){
+	private void logSession(Session session, String intro) {
 		Iterator<DataHelper> itr = dataHelpers.values().iterator();
-		while (itr.hasNext()){
-			DataHelper element=itr.next();
-			log.info(intro + "Session:"+element.getName()+":"+element.getValueFromSession());
+		while (itr.hasNext()) {
+			DataHelper element = itr.next();
+			log.info(intro + "Session:" + element.getName() + ":" + element.getValueFromSession());
 		}
 	}
-	
+
 	/**
 	 * Matches numerics to Strings, too.
+	 * 
 	 * @return
 	 */
-	private boolean match (String s1, String s2){
-		if (s1.toUpperCase().contains(s2.toUpperCase())){
+	private boolean match(String s1, String s2) {
+		if (s1.toUpperCase().contains(s2.toUpperCase())) {
 			return true;
 		}
-		//replace numbers with words
-		if (StringUtils.isAlphanumericSpace(s1)&&!StringUtils.isAlphaSpace(s1)) {
-			s1=replaceNumWithOrdinalWord(s1);
+		// replace numbers with words
+		if (StringUtils.isAlphanumericSpace(s1) && !StringUtils.isAlphaSpace(s1)) {
+			s1 = replaceNumWithOrdinalWord(s1);
 		}
-		if (StringUtils.isAlphanumericSpace(s2)&&!StringUtils.isAlphaSpace(s2)) {
-			s2=replaceNumWithOrdinalWord(s2);
+		if (StringUtils.isAlphanumericSpace(s2) && !StringUtils.isAlphaSpace(s2)) {
+			s2 = replaceNumWithOrdinalWord(s2);
 		}
-		if (s1.toUpperCase().contains(s2.toUpperCase())){
+		if (s1.toUpperCase().contains(s2.toUpperCase())) {
 			return true;
 		}
 		return false;
 	}
-	
-	private String replaceNumWithOrdinalWord(String inputString){
-		log.debug("replaceNumWithOrdinalWord input:"+inputString);
+
+	private String replaceNumWithOrdinalWord(String inputString) {
+		log.debug("replaceNumWithOrdinalWord input:" + inputString);
 		StringBuffer output = new StringBuffer(inputString.length());
-		String digitStr ="";
+		String digitStr = "";
 
 		for (int i = 0; i < inputString.length(); i++) {
 			if (Character.isDigit(inputString.charAt(i))) {
 				digitStr += inputString.charAt(i);
-			} else if (Character.isAlphabetic(inputString.charAt(i))&&!digitStr.isEmpty()){
-				//ignore alphabetics that are juxtaposed with digits
+			} else if (Character.isAlphabetic(inputString.charAt(i)) && !digitStr.isEmpty()) {
+				// ignore alphabetics that are juxtaposed with digits
 			} else if (digitStr.isEmpty()) {
 				output.append(inputString.charAt(i));
 			} else {
-				//translate the digits and move them over
-				output.append(NumberMaps.num2OrdWordMap.get(Integer.parseInt(digitStr))) ;
+				// translate the digits and move them over
+				output.append(NumberMaps.num2OrdWordMap.get(Integer.parseInt(digitStr)));
 				digitStr = "";
 			}
 		}
 		if (!digitStr.isEmpty()) {
-			//translate the digits and move them over
-			output.append(NumberMaps.num2OrdWordMap.get(Integer.parseInt(digitStr))) ;
+			// translate the digits and move them over
+			output.append(NumberMaps.num2OrdWordMap.get(Integer.parseInt(digitStr)));
 			digitStr = "";
 		}
-		String returnValue= new String (output);
-		log.debug("replaceNumWithOrdinalWord returning:"+returnValue);
+		String returnValue = new String(output);
+		log.debug("replaceNumWithOrdinalWord returning:" + returnValue);
 		return returnValue;
 	}
+
 	/**
 	 * 
 	 * **/
-	private Map<String, String> getInputValuesFromSession(){
+	private Map<String, String> getInputValuesFromSession() {
 		Map<String, String> input = new HashMap<String, String>();
 		Iterator<DataHelper> itr = dataHelpers.values().iterator();
-		while (itr.hasNext()){
-			DataHelper element=itr.next();
+		while (itr.hasNext()) {
+			DataHelper element = itr.next();
 			input.put(element.getName(), element.getValueFromSession());
 		}
 		return input;
+	}
+	
+	private Map<String,String> getInputValuesFromDAO(PaInputData input){
+		Map<String, String> output = new HashMap<String, String>();
+		output.put(BusStopHelper.NAME,input.getBusstop());
+		output.put(DirectionHelper.NAME,input.getDirection());
+		output.put(RouteHelper.NAME,input.getRoute());
+		return output;
+	}
+		
+	private void saveInputToDB(PaInput input){
+		if (amazonDynamoDBClient == null) {amazonDynamoDBClient = new AmazonDynamoDBClient();}
+		if (dynamoDbClient == null) { dynamoDbClient = new PaDynamoDbClient(amazonDynamoDBClient);}
+		if (inputDao==null) {inputDao = new PaDao(dynamoDbClient);}
+		inputDao.savePaInput(input);
+
 	}
 }

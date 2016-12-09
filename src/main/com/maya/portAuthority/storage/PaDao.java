@@ -1,11 +1,16 @@
 package com.maya.portAuthority.storage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.amazon.speech.speechlet.Session;
+import com.maya.portAuthority.GetNextBusSpeechlet;
 
 /**
  * Contains the methods to interact with the persistence layer for Port Authority in DynamoDB.
  */
 public class PaDao {
+	private static Logger log = LoggerFactory.getLogger(PaDao.class);
     private final PaDynamoDbClient dynamoDbClient;
 
     public PaDao(PaDynamoDbClient dynamoDbClient) {
@@ -38,11 +43,11 @@ public class PaDao {
      * 
      * @param input
      */
-    public void saveScoreKeeperGame(PaInput input) {
+    public void savePaInput(PaInput input) {
         PaUserDataItem item = new PaUserDataItem();
         item.setCustomerId(input.getSession().getUser().getUserId());
         //item.setGameData(game.getGameData());
-        item.setData(input.getData());
+        item.setInputData(input.getData());
         dynamoDbClient.saveItem(item);
     }
 }

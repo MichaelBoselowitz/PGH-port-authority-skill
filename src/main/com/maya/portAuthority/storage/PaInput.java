@@ -6,12 +6,16 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.amazon.speech.speechlet.Session;
 
 /**
  * Represents a user input to Port Authority Skill
  */
 public final class PaInput {
+	private static Logger log = LoggerFactory.getLogger(PaInput.class);
     private Session session;
     private PaInputData data;
 
@@ -45,7 +49,7 @@ public final class PaInput {
         return session;
     }
 
-    protected PaInputData getData() {
+    public PaInputData getData() {
         return data;
     }
 
@@ -55,6 +59,10 @@ public final class PaInput {
 
     /**
      */
+    public boolean hasAllData() {
+        return (hasBusstop()&&hasDirection()&&hasRoute());
+    }
+    
     public boolean hasBusstop() {
         return !(data.getBusstop()==null);
     }
