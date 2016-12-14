@@ -28,9 +28,6 @@ import com.amazon.speech.speechlet.SpeechletResponse;
 import com.amazon.speech.ui.PlainTextOutputSpeech;
 import com.amazon.speech.ui.SsmlOutputSpeech;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
-import com.brsanthu.googleanalytics.EventHit;
-import com.brsanthu.googleanalytics.ExceptionHit;
-import com.brsanthu.googleanalytics.GoogleAnalytics;
 import com.amazon.speech.ui.Reprompt;
 import com.amazon.speech.ui.SimpleCard;
 import com.maya.portAuthority.api.Message;
@@ -68,10 +65,9 @@ public class GetNextBusSpeechlet implements Speechlet {
 	private PaDynamoDbClient dynamoDbClient;
 	private PaDao inputDao;
 	
-	GoogleAnalytics ga = new GoogleAnalytics("UA-88894500-1");
-	String userId;
-	
-	
+	AnalyticsManager analytics;
+
+
 
 	/** PUBLIC METHODS ******************************/
 	/**
@@ -91,14 +87,10 @@ public class GetNextBusSpeechlet implements Speechlet {
 		inputDao = new PaDao(dynamoDbClient);
 		PaInput input = inputDao.getPaInput(session);
 		if ((input != null) && input.hasAllData()){
-			EventHit event = new EventHit("Launch", "Return Saved");
-			event.userId(userId);
-			if (ga!=null) {ga.post(event);}
+			analytics.postEvent(AnalyticsManager.CATEGORY_LAUNCH, "Return Saved");
 			return buildResponse(getInputValuesFromDAO(input.getData()));
 		} else {
-			EventHit event = new EventHit("Launch", "Welcome");
-			event.userId(userId);
-			if (ga!=null) {ga.post(event);}
+			analytics.postEvent(AnalyticsManager.CATEGORY_LAUNCH, "Welcome");
 			return newAskResponse(AUDIO_WELCOME + SPEECH_WELCOME + RouteHelper.SPEECH, RouteHelper.SPEECH);
 		}
 	}
@@ -109,11 +101,10 @@ public class GetNextBusSpeechlet implements Speechlet {
 	 */
 	public void onSessionStarted(SessionStartedRequest request, Session session) throws SpeechletException {
 		log.info("onSessionStarted requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
-		EventHit event = new EventHit("Session", "Start");
-		userId=session.getUser().getUserId();
-		event.userId(userId);
-		event.sessionControl("start");
-		ga.post(event);
+		
+		analytics = new AnalyticsManager();
+		analytics.setUserId(session.getUser().getUserId());
+		analytics.postSessionEvent(AnalyticsManager.ACTION_SESSION_START);
 		
 		// TODO: Not a HASHMAP
 		this.dataHelpers = new HashMap<String, DataHelper>();// createDataHelpers(session);
@@ -130,9 +121,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 
 		try {
 			Intent intent = request.getIntent();
-			EventHit event = new EventHit("Intent", intent.getName());
-			event.userId(userId);
-			if (ga!=null) {ga.post(event);}
+			analytics.postEvent(AnalyticsManager.CATEGORY_INTENT, intent.getName());
 			if (intent.getName().equals("OneshotBusIntent")){
 				Iterator<DataHelper> itr = dataHelpers.values().iterator();
 				while (itr.hasNext()){
@@ -149,9 +138,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 				dataHelper.putValuesInSession(intent);
 			}
 		} catch (InvalidInputException e) {
-			ExceptionHit event = new ExceptionHit(e.getMessage(), false);
-			event.userId(userId);
-			if (ga!=null) {ga.post(event);}
+			analytics.postException(e.getMessage(), false);
 			return newAskResponse(session, e.getSpeech(), e.getSpeech()); 
 		}
 
@@ -169,14 +156,12 @@ public class GetNextBusSpeechlet implements Speechlet {
 		//TODO: Make Session Data be a PaInput
 		// OK, the user has entered everything, save their entries
 		Map<String,String> sessionData= getInputValuesFromSession();
-		EventHit event = new EventHit("Intent", "Collected all input" );
-		event.userId(userId);
-		if (ga!=null) {ga.post(event);}
-		PaInputData data=PaInputData.newInstance();
-		data.setBusstop(sessionData.get(BusStopHelper.NAME));
-		data.setDirection(sessionData.get(DirectionHelper.NAME));
-		data.setRoute(sessionData.get(RouteHelper.NAME));
-		saveInputToDB(PaInput.newInstance(session, data));
+		analytics.postEvent(AnalyticsManager.CATEGORY_INTENT, "Collected all input" );
+		PaInputData inputData=PaInputData.newInstance();
+		inputData.setBusstop(sessionData.get(BusStopHelper.NAME));
+		inputData.setDirection(sessionData.get(DirectionHelper.NAME));
+		inputData.setRoute(sessionData.get(RouteHelper.NAME));
+		saveInputToDB(PaInput.newInstance(session, inputData));
 		
 		// now let's find their response
 		return buildResponse(sessionData);
@@ -184,13 +169,12 @@ public class GetNextBusSpeechlet implements Speechlet {
 	
 		private SpeechletResponse buildResponse(Map <String, String> input){
 		List<Message> stops = getMatchedBusStops(input);
-		// log.trace("Found "+stops.size()+ "matching stops");
+		log.trace("Found "+stops.size()+ "matching stops");
+		
 
 		// if 0 ask again
 		if (stops == null || stops.isEmpty()) {
-			ExceptionHit event = new ExceptionHit("No matching busstops", false );
-			event.userId(userId);
-			if (ga!=null) {ga.post(event);}
+			analytics.postException("No matching busstops", false );
 			return newAskResponse(
 					AUDIO_FAILURE + "I cannot find a stop that matches. " + input.get(BusStopHelper.NAME)
 							+ " <break time=\"0.1s\" /> for " + input.get(DirectionHelper.NAME) + " "
@@ -198,16 +182,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 					BusStopHelper.SPEECH);
 		}
 
-		if (stops.size()>1){
-		// String speechOutput = "I found several stops that match. try
-		// specifying a cross street.";
-		// return
-		// newAskResponse(speechOutput+BusStopHelper.SPEECH,BusStopHelper.SPEECH);
-			ExceptionHit event = new ExceptionHit("More than 1 matching busstop", false );
-			event.userId(userId);
-			if (ga!=null) {ga.post(event);}
-		}
-
+		analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE,"Matching Stops", stops.get(0).getStopName(), stops.size() );
 		// if 1 find answer and respond
 		List<Message> messages = new ArrayList<Message>();
 		String stationID = stops.get(0).getStopID();
@@ -225,10 +200,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 
 		log.trace("onSessionEnded requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
 		this.dataHelpers.clear();
-		EventHit event = new EventHit("Session", "end");
-		event.userId(userId);
-		event.sessionControl("end");
-		if (ga!=null) {ga.post(event);}
+		analytics.postSessionEvent(AnalyticsManager.ACTION_SESSION_END);
 	}
 
 	private SpeechletResponse checkForAdditionalQuestions(Session session) {
@@ -337,13 +309,10 @@ public class GetNextBusSpeechlet implements Speechlet {
 			// Create the plain text output
 			// outputSpeech.setText(speechOutput);
 			outputSpeech.setSsml("<speak> " + speechOutput + "</speak>");
-			EventHit event = new EventHit("Success", textOutput, "Responses", messages.size());
-			event.userId(userId);
-			if (ga!=null) {ga.post(event);}
+			analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "Success", textOutput, messages.size());
+			
 		} catch (Exception e) {
-			ExceptionHit event = new ExceptionHit(e.getMessage(), true);
-			event.userId(userId);
-			if (ga!=null) {ga.post(event);}
+			analytics.postException(e.getMessage(), true);
 			e.printStackTrace();
 		}
 		
@@ -475,4 +444,6 @@ public class GetNextBusSpeechlet implements Speechlet {
 		inputDao.savePaInput(input);
 
 	}
+	
+
 }
