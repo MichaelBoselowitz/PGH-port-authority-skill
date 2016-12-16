@@ -60,11 +60,11 @@ public final class PaInput {
     /**
      */
     public boolean hasAllData() {
-        return (hasBusstop()&&hasDirection()&&hasRoute());
+        return (hasLocation()&&hasDirection()&&hasRouteID());
     }
     
-    public boolean hasBusstop() {
-        return !(data.getBusstop()==null);
+    public boolean hasStopName() {
+        return !(data.getStopName()==null);
     }
     
     public boolean hasDirection() {
@@ -72,11 +72,11 @@ public final class PaInput {
     }
     
     public boolean hasLocation() {
-        return !( data.getLocation()==null);
+        return !( data.getLocationName()==null);
     }
     
-    public boolean hasRoute() {
-        return !(data.getRoute()==null);
+    public boolean hasRouteID() {
+        return !(data.getRouteID()==null);
     }
 
 }

@@ -3,14 +3,27 @@ package com.maya.portAuthority.storage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.maya.portAuthority.googleMaps.Stop;
+
 /**
  * 
  */
 public class PaInputData {
 	private static Logger log = LoggerFactory.getLogger(PaInputData.class);
-    private String location;
-    private String busstop;
-    private String route;
+    
+
+	private String locationName;
+    private String locationLat;
+    private String locationLong;
+    
+    private String stopID;//Stop ID
+    private String stopName;//Description of stop
+    private double stopLat; //latitude
+    private double stopLon; //longitude
+    
+    private String routeID;
+    private String routeName;
+    
     private String direction;
 
     public PaInputData() {
@@ -30,28 +43,76 @@ public class PaInputData {
         return newInstance;
     }
 
-    public String getLocation() {
-		return location;
+	public String getLocationName() {
+		return locationName;
 	}
 
-	public void setLocation(String location) {
-		this.location = location;
+	public void setLocationName(String locationName) {
+		this.locationName = locationName;
 	}
 
-	public String getBusstop() {
-		return busstop;
+	public String getLocationLat() {
+		return locationLat;
 	}
 
-	public void setBusstop(String busstop) {
-		this.busstop = busstop;
+	public void setLocationLat(String locationLat) {
+		this.locationLat = locationLat;
 	}
 
-	public String getRoute() {
-		return route;
+	public String getLocationLong() {
+		return locationLong;
 	}
 
-	public void setRoute(String route) {
-		this.route = route;
+	public void setLocationLong(String locationLong) {
+		this.locationLong = locationLong;
+	}
+
+	public String getStopID() {
+		return stopID;
+	}
+
+	public void setStopID(String stopID) {
+		this.stopID = stopID;
+	}
+
+	public String getStopName() {
+		return stopName;
+	}
+
+	public void setStopName(String stopName) {
+		this.stopName = stopName;
+	}
+
+	public double getStopLat() {
+		return stopLat;
+	}
+
+	public void setStopLat(double stopLat) {
+		this.stopLat = stopLat;
+	}
+
+	public double getStopLon() {
+		return stopLon;
+	}
+
+	public void setStopLon(double stopLon) {
+		this.stopLon = stopLon;
+	}
+
+	public String getRouteID() {
+		return routeID;
+	}
+
+	public void setRouteID(String routeID) {
+		this.routeID = routeID;
+	}
+
+	public String getRouteName() {
+		return routeName;
+	}
+
+	public void setRouteName(String routeName) {
+		this.routeName = routeName;
 	}
 
 	public String getDirection() {
@@ -61,9 +122,18 @@ public class PaInputData {
 	public void setDirection(String direction) {
 		this.direction = direction;
 	}
-
-	public String toString() {
-		return "PaInputData [location=" + location + ", busstop=" + busstop + ", route=" + route + ", direction="
-				+ direction + "]";
+	
+	public void setStop(Stop stop){
+		setStopName(stop.getStopName());
+		setStopID(stop.getStopID());
+		setStopLat(stop.getLatitude());
+		setStopLon(stop.getLongitude());
 	}
+	
+	public String toString() {
+		return "PaInputData [locationName=" + locationName + ", locationLat=" + locationLat + ", locationLong="
+				+ locationLong + ", stopID=" + stopID + ", stopName=" + stopName + ", stopLat=" + stopLat + ", stopLon="
+				+ stopLon + ", routeID=" + routeID + ", routeName=" + routeName + ", direction=" + direction + "]";
+	}
+    
 }

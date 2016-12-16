@@ -1,58 +1,58 @@
 package com.maya.portAuthority.util;
 
+
 import com.amazon.speech.slu.Intent;
 import com.amazon.speech.slu.Slot;
 import com.amazon.speech.speechlet.Session;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 /**
- * @author brown
+ * @author brown@maya.com
  *
  */
-public class DirectionHelper extends DataHelper {
-	public static final String INTENT_NAME="DirectionBusIntent";
-	public static final String NAME = "Direction";
-	public static final String SPEECH ="Which direction are you <w role=\"ivona:NN\">traveling</w>, inbound or outbound ?";
+public class LocationHelper extends DataHelper {
+	public static final String INTENT_NAME="LocationBusIntent";
+	public static final String NAME = "Location";
+	public static final String SPEECH="Where are you now?";
 	
-	private static  Logger log = LoggerFactory.getLogger(DirectionHelper.class);
+	private static  Logger log = LoggerFactory.getLogger(LocationHelper.class);
 
-		private Session session;
+
 	//private Intent intent;
+	private Session session;
 
-	public DirectionHelper(Session s){
+	public LocationHelper(Session s){
 		log.info("constructor");
 		this.session=s;
 	}
 
 	public void putValuesInSession(Intent intent){
 		log.info("putValuesInSession"+intent.getName());
-
-		String direction=getValueFromIntentSlot(intent);
-		if (direction!=null){
-			session.setAttribute(NAME, direction.toUpperCase());
+		String location=getValueFromIntentSlot(intent);
+		if (location!=null){
+			log.debug("putting value in session Slot Location:"+location);
+			session.setAttribute(NAME, location.toUpperCase()); 
 		} else {
-			//log
+			log.error("location is null");
 		}
 	} 
-
-	@Override
+	
 	public String getValueFromIntentSlot(Intent i){
-		log.info("getValuesFromIntentSlot:"+i.getName());
+		log.info("getValueFromIntentSlot:"+i.getName());
 		Slot slot = i.getSlot(NAME);
 		return (slot!=null) ? slot.getValue() : null;
 	}
 	
 	public String getValueFromSession(){
-		log.info("getValuesFromSession");
+		log.info("getValueFromSession");
 		if (session.getAttributes().containsKey(NAME)) {
 			return (String) session.getAttribute(NAME);
 		} else {
 			return null;
 		}
 	}
-	
+
 	public String getName(){
 		return NAME;
 	}

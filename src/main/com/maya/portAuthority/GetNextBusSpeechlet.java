@@ -11,6 +11,7 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.BasicConfigurator;
+import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
@@ -32,11 +33,13 @@ import com.amazon.speech.ui.Reprompt;
 import com.amazon.speech.ui.SimpleCard;
 import com.maya.portAuthority.api.Message;
 import com.maya.portAuthority.api.TrueTimeMessageParser;
+import com.maya.portAuthority.googleMaps.Stop;
 import com.maya.portAuthority.storage.PaDao;
 import com.maya.portAuthority.storage.PaDynamoDbClient;
 import com.maya.portAuthority.storage.PaInput;
 import com.maya.portAuthority.storage.PaInputData;
 import com.maya.portAuthority.util.*;
+import com.maya.portAuthority.googleMaps.*;
 
 public class GetNextBusSpeechlet implements Speechlet {
 	private static Logger log = LoggerFactory.getLogger(GetNextBusSpeechlet.class);
@@ -88,7 +91,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 		PaInput input = inputDao.getPaInput(session);
 		if ((input != null) && input.hasAllData()){
 			analytics.postEvent(AnalyticsManager.CATEGORY_LAUNCH, "Return Saved");
-			return buildResponse(getInputValuesFromDAO(input.getData()));
+			return buildResponse(input.getData());
 		} else {
 			analytics.postEvent(AnalyticsManager.CATEGORY_LAUNCH, "Welcome");
 			return newAskResponse(AUDIO_WELCOME + SPEECH_WELCOME + RouteHelper.SPEECH, RouteHelper.SPEECH);
@@ -109,7 +112,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 		// TODO: Not a HASHMAP
 		this.dataHelpers = new HashMap<String, DataHelper>();// createDataHelpers(session);
 		dataHelpers.put(RouteHelper.INTENT_NAME, DataHelperFactory.getHelper(session, RouteHelper.NAME));
-		dataHelpers.put(BusStopHelper.INTENT_NAME, DataHelperFactory.getHelper(session, BusStopHelper.NAME));
+		dataHelpers.put(LocationHelper.INTENT_NAME, DataHelperFactory.getHelper(session, LocationHelper.NAME));
 		dataHelpers.put(DirectionHelper.INTENT_NAME, DataHelperFactory.getHelper(session, DirectionHelper.NAME));
 	}
 
@@ -117,7 +120,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 	 * Called when the user invokes an intent.
 	 */
 	public SpeechletResponse onIntent(IntentRequest request, Session session) throws SpeechletException {
-	     log.info("onIntent requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
+	     log.info("onIntent intent={}, requestId={}, sessionId={}", request.getIntent().getName(), request.getRequestId(), session.getSessionId());
 
 		try {
 			Intent intent = request.getIntent();
@@ -126,15 +129,12 @@ public class GetNextBusSpeechlet implements Speechlet {
 				Iterator<DataHelper> itr = dataHelpers.values().iterator();
 				while (itr.hasNext()){
 					DataHelper dataHelper=itr.next();
-					log.info(dataHelper.getIntentName()+":"+dataHelper.getValueFromIntentSlot(intent));
 					dataHelper.putValuesInSession(intent);
 				}
 
 
 			} else { //DirectionBusIntent {Direction} || RouteBusIntent {Route} || StationBusIntent {StationName}
 				DataHelper dataHelper = dataHelpers.get(intent.getName());
-				log.info(dataHelper.getIntentName()+":"+dataHelper.getValueFromIntentSlot(intent));
-				//validate input
 				dataHelper.putValuesInSession(intent);
 			}
 		} catch (InvalidInputException e) {
@@ -149,62 +149,47 @@ public class GetNextBusSpeechlet implements Speechlet {
 		} else if (log.isInfoEnabled()) {
 			logSession(session, "Returning response for:");
 		}
-		
-
-
-
-		//TODO: Make Session Data be a PaInput
 		// OK, the user has entered everything, save their entries
-		Map<String,String> sessionData= getInputValuesFromSession();
 		analytics.postEvent(AnalyticsManager.CATEGORY_INTENT, "Collected all input" );
-		PaInputData inputData=PaInputData.newInstance();
-		inputData.setBusstop(sessionData.get(BusStopHelper.NAME));
-		inputData.setDirection(sessionData.get(DirectionHelper.NAME));
-		inputData.setRoute(sessionData.get(RouteHelper.NAME));
-		saveInputToDB(PaInput.newInstance(session, inputData));
 		
-		// now let's find their response
-		return buildResponse(sessionData);
+		try {
+			
+			//TODO: Make Session Data be a PaInput
+			Map<String,String> sessionData= getInputValuesFromSession();
+			PaInputData inputData=PaInputData.newInstance();
+			inputData.setDirection(sessionData.get(DirectionHelper.NAME));
+			inputData.setRouteID(sessionData.get(RouteHelper.NAME));
+			inputData.setLocationName(sessionData.get(LocationHelper.NAME));
+
+
+			//Need to translate Locaiton to Bus Stop by now. 
+			NearestStopLocator locator=new NearestStopLocator();
+			Stop nearestStop=locator.process(inputData.getLocationName(), inputData.getRouteID(),inputData.getDirection());
+			inputData.setStop(nearestStop);
+			saveInputToDB(PaInput.newInstance(session, inputData));
+
+			// get speech response for all stops
+			return buildResponse(inputData);
+			
+		} catch (Exception e) {
+			//TODO: Handle this excpetion appropriately. 
+			e.printStackTrace();
+			analytics.postException(e.getMessage(), false);
+			return newAskResponse(session, e.getMessage(), e.getMessage()); 
+		}
 	}
 	
-		private SpeechletResponse buildResponse(Map <String, String> input){
-		List<Message> stops = getMatchedBusStops(input);
-		log.trace("Found "+stops.size()+ "matching stops");
-		
 
-		// if 0 ask again
-		if (stops == null || stops.isEmpty()) {
-			analytics.postException("No matching busstops", false );
-			return newAskResponse(
-					AUDIO_FAILURE + "I cannot find a stop that matches. " + input.get(BusStopHelper.NAME)
-							+ " <break time=\"0.1s\" /> for " + input.get(DirectionHelper.NAME) + " "
-							+ input.get(RouteHelper.NAME) + " <break time=\"0.1s\" /> " + BusStopHelper.SPEECH,
-					BusStopHelper.SPEECH);
-		}
-
-		analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE,"Matching Stops", stops.get(0).getStopName(), stops.size() );
-		// if 1 find answer and respond
-		List<Message> messages = new ArrayList<Message>();
-		String stationID = stops.get(0).getStopID();
-		String stationName = stops.get(0).getStopName();
-		log.trace("Station Name " + stationName + " matched " + stationID);
 		
-		messages = TrueTimeMessageParser.getPredictions(input.get(RouteHelper.NAME), stationID);
-
-		// get speech response for all stops
-		
-		return getAnswer(messages, input.get(RouteHelper.NAME), stationName, input.get(DirectionHelper.NAME));
-	}
 
 	public void onSessionEnded(SessionEndedRequest request, Session session) throws SpeechletException {
-
-		log.trace("onSessionEnded requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
+		log.info("onSessionEnded requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
 		this.dataHelpers.clear();
 		analytics.postSessionEvent(AnalyticsManager.ACTION_SESSION_END);
 	}
 
 	private SpeechletResponse checkForAdditionalQuestions(Session session) {
-		if (log.isTraceEnabled()) {
+		if (log.isInfoEnabled()) {
 			logSession(session, "checkingForAdditionalQuestions");
 		}
 		// Do I have all the data I need?
@@ -213,48 +198,26 @@ public class GetNextBusSpeechlet implements Speechlet {
 			DataHelper element = itr.next();
 
 			if (element.getValueFromSession() == null) {
-				log.trace(element.getName() + ":" + element.getValueFromSession() + "==null");
+				log.info(element.getName() + ":" + element.getValueFromSession() + "==null");
 				return newAskResponse(session, element.getSpeech(), element.getSpeech());
 			} else {
-				log.trace(element.getName() + ":" + element.getValueFromSession() + "!=null");
+				log.info(element.getName() + ":" + element.getValueFromSession() + "!=null");
 			}
 		}
 
 		return null;
 	}
 
-	private List<Message> getMatchedBusStops(Map<String, String> input) {
-		String matchString = input.get(BusStopHelper.NAME);
-		List<Message> stops = TrueTimeMessageParser.getStops(input.get(RouteHelper.NAME),
-				input.get(DirectionHelper.NAME));
-		Iterator<Message> iterator = stops.iterator();
-		while (iterator.hasNext()) {
-			Message element = (Message) iterator.next();
-			if (element.getMessageType().equalsIgnoreCase("error")) {
-				log.error(element.getError() + ": probably no stops found on " + input.get(BusStopHelper.NAME) + " for "
-						+ input.get(DirectionHelper.NAME) + " " + input.get(RouteHelper.NAME));
-				return null;
-			} else if (element.getMessageType().equalsIgnoreCase("stop")) {
-				log.debug("Trying to Match: " + element.getStopName().toUpperCase() + "with " + matchString);
-				// if
-				// (element.getStopName().toUpperCase().contains(matchString)){
-				if (!match(element.getStopName().toUpperCase(), matchString)) {
-					iterator.remove();
-				}
-			} else {
-				iterator.remove();
-			}
-		}
-		return stops;
 
-	}
-
-	private SpeechletResponse getAnswer(List<Message> messages, String busline, String stationName, String direction) {
+	private SpeechletResponse buildResponse(PaInputData inputData) {
+		List<Message> messages = new ArrayList<Message>();
+		messages = TrueTimeMessageParser.getPredictions(inputData.getRouteID(), inputData.getStopID());
+		
 		SsmlOutputSpeech outputSpeech = new SsmlOutputSpeech();
 		// PlainTextOutputSpeech outputSpeech = new PlainTextOutputSpeech();
 		SimpleCard card = new SimpleCard();
 		int when;
-		log.trace("getAnswer... with " + messages.size() + "messages");
+		log.info("getAnswer... with " + messages.size() + "messages");
 
 		try {
 			// Define speech output
@@ -264,30 +227,30 @@ public class GetNextBusSpeechlet implements Speechlet {
 			if (messages.size() == 0) {
 				log.info("No Messages");
 
-				textOutput = " No " + direction + ", " + busline + " is expected at " + stationName
+				textOutput = " No " + inputData.getDirection() + ", " + inputData.getRouteID() + " is expected at " + inputData.getStopName()
 						+ " in the next 30 minutes  ";
 				speechOutput = AUDIO_FAILURE + textOutput;
 
 			} else {
 				if ((messages.size() == 1) && (messages.get(0).getMessageType().equals(Message.ERROR))) {
 					log.error("1 error message:" + messages.get(0).getError());
-					textOutput = " No " + direction + ", " + busline + " is expected at " + stationName
+					textOutput = " No " + inputData.getDirection() + ", " + inputData.getRouteID() + " is expected at " + inputData.getStopName()
 							+ " in the next 30 minutes  ";
 					speechOutput = AUDIO_FAILURE + textOutput;
 				} else {
 					log.info(messages.size() + " messages");
 
 					for (int i = 0; i < messages.size(); i++) {
-						log.trace("Message[" + i + "]= " + messages.get(i).getMessageType());
+						log.info("Message[" + i + "]= " + messages.get(i).getMessageType());
 						when = messages.get(i).getEstimate();
 						if (i == 0) {
 							if (when < 3) {
-								textOutput = "An " + direction + " " + busline + " is arriving at " + stationName
+								textOutput = "An " + inputData.getDirection() + " " + inputData.getRouteID() + " is arriving at " + inputData.getStopName()
 										+ " now ";
-								speechOutput = AUDIO_SUCCESS + "An " + direction + " " + busline + " is arriving at "
-										+ stationName + " <break time=\"0.1s\" /> now ";
+								speechOutput = AUDIO_SUCCESS + "An " + inputData.getDirection() + " " + inputData.getRouteID() + " is arriving at "
+										+ inputData.getStopName() + " <break time=\"0.1s\" /> now ";
 							} else {
-								textOutput = "An " + direction + " " + busline + " will be arriving at " + stationName
+								textOutput = "An " + inputData.getDirection() + " " + inputData.getRouteID() + " will be arriving at " + inputData.getStopName()
 										+ " in " + when + " minutes ";
 								speechOutput = AUDIO_SUCCESS + textOutput;
 
@@ -417,7 +380,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 	}
 
 	/**
-	 * 
+	 * @deprecated
 	 * **/
 	private Map<String, String> getInputValuesFromSession() {
 		Map<String, String> input = new HashMap<String, String>();
@@ -429,13 +392,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 		return input;
 	}
 	
-	private Map<String,String> getInputValuesFromDAO(PaInputData input){
-		Map<String, String> output = new HashMap<String, String>();
-		output.put(BusStopHelper.NAME,input.getBusstop());
-		output.put(DirectionHelper.NAME,input.getDirection());
-		output.put(RouteHelper.NAME,input.getRoute());
-		return output;
-	}
+
 		
 	private void saveInputToDB(PaInput input){
 		if (amazonDynamoDBClient == null) {amazonDynamoDBClient = new AmazonDynamoDBClient();}

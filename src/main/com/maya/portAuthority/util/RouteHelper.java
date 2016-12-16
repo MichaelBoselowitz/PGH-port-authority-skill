@@ -30,12 +30,12 @@ public class RouteHelper extends DataHelper {
 	private Session session;
 
 	public RouteHelper(Session s){
-		log.trace("constructor");
+		log.info("constructor");
 		this.session=s;
 	}
 
 	public void putValuesInSession(Intent intent) throws InvalidInputException{
-		log.trace("putValuesInSession"+intent.getName());
+		log.info("putValuesInSession"+intent.getName());
 
 		String routeID=getValueFromIntentSlot(intent);
 
@@ -53,13 +53,13 @@ public class RouteHelper extends DataHelper {
 	} 
 
 	public String getValueFromIntentSlot(Intent intent) {
-		log.trace("getValuesInSession"+intent.getName());
+		log.info("getValuesInSession"+intent.getName());
 		Slot slot = intent.getSlot(NAME);
 		return (slot!=null) ? slot.getValue() : null;
 	}
 	
 	public String getValueFromSession(){
-		log.trace("getValueFromSession");
+		log.info("getValueFromSession");
 		if (session.getAttributes().containsKey(NAME)) {
 			return (String) session.getAttribute(NAME);
 		} else {

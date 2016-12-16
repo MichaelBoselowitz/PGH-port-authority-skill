@@ -10,12 +10,18 @@ import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.maya.portAuthority.storage.PaInput;
 
 /**
  *
  * @author Adithya
  */
 public class LocationTracker {
+
+	private static Logger log = LoggerFactory.getLogger(LocationTracker.class);
 
     List<Coordinates> coordinates = null;
     List<Stop> stops = null;
@@ -39,9 +45,9 @@ public class LocationTracker {
         coordinates = new ArrayList<>();
         e = new ErrorMessage();
         JSONArray results = json.getJSONArray("results");
-
+        log.info("JSON Results Size={}",results.length());
         if (results != null) {
-            if (results.length() != 0 && results.length() <= limit) {
+            if (results.length() != 0){// && results.length() <= limit) {
                 for (int i = 0; i < results.length(); i++) {
                     JSONObject location = results.getJSONObject(i).getJSONObject("geometry").getJSONObject("location");
                     double lat = location.getDouble("lat");
@@ -53,8 +59,8 @@ public class LocationTracker {
                 }
             } else if (results.length() == 0) {
                 e.setError("I did not understand the source location.");
-            } else if (results.length() > limit) {
-                e.setError("Could you please be more specific?");
+            //} else if (results.length() > limit) {
+            //    e.setError("Could you please be more specific?");
             }
         }
         return coordinates;

@@ -13,6 +13,8 @@ import com.amazon.speech.speechlet.Session;
 import com.maya.portAuthority.api.Message;
 import com.maya.portAuthority.api.TrueTimeMessageParser;
 
+import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
@@ -33,12 +35,12 @@ public class BusStopHelper extends DataHelper {
 	private Session session;
 
 	public BusStopHelper(Session s){
-		log.trace("constructor");
+		log.info("constructor");
 		this.session=s;
 	}
 
 	public void putValuesInSession(Intent intent){
-		log.trace("putValuesInSession" );
+		log.trace("putValuesInSession"+intent.getName() );
 		String stationName=getValueFromIntentSlot(intent);
 		if (stationName!=null){
 			log.debug("putting value in session Slot station:"+stationName);
@@ -49,13 +51,13 @@ public class BusStopHelper extends DataHelper {
 	} 
 	
 	public String getValueFromIntentSlot(Intent i){
-		log.trace("getValueFromIntentSlot:"+i.getName());
+		log.info("getValueFromIntentSlot:"+i.getName());
 		Slot slot = i.getSlot(NAME);
 		return (slot!=null) ? slot.getValue() : null;
 	}
 	
 	public String getValueFromSession(){
-		log.trace("getValueFromSession");
+		log.info("getValueFromSession");
 		if (session.getAttributes().containsKey(NAME)) {
 			return (String) session.getAttribute(NAME);
 		} else {

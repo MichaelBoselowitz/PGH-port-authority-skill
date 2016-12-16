@@ -23,7 +23,10 @@ public class DataHelperFactory {
 			log.debug("Building RouteHelper");
 			return new RouteHelper(session);
 			
-		}
-		return new RouteHelper(session);
+		} else if (dataType.equals(LocationHelper.NAME)) {
+			log.debug("Building LocationHelper");
+			return new LocationHelper(session);
+		} 
+		return null;
 	}
 }
