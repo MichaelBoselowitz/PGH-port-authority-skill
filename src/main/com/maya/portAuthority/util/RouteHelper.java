@@ -27,30 +27,37 @@ public class RouteHelper extends DataHelper {
 	private static Logger log = LoggerFactory.getLogger(RouteHelper.class);
 	
 	//private Intent intent;
-	private Session session;
+	//private Session session;
 
-	public RouteHelper(Session s){
+	public RouteHelper(){
 		log.info("constructor");
-		this.session=s;
+		//this.session=s;
 	}
 
-	public void putValuesInSession(Intent intent) throws InvalidInputException{
-		log.info("putValuesInSession"+intent.getName());
+	public String putValuesInSession(Session session, Intent intent) throws InvalidInputException {
+		log.info("putValuesInSession" + intent.getName());
 
-		String routeID=getValueFromIntentSlot(intent);
+		String routeID = getValueFromIntentSlot(intent);
 
-		if (routeID!=null){
-			routeID=routeID.replaceAll("\\s+","");
-			Message route = getMatchedRoute(routeID.toUpperCase());
-			if (route!=null){
-				session.setAttribute(NAME, route.getRouteID());
-				session.setAttribute(ROUTE_NAME, route.getRouteName()); 	
-			} else {
-				log.error("putValuesInSession:"+intent.getName()+" route is null");
-				throw new InvalidInputException("Route does not match API", "Could not find the bus line "+routeID+"."+ SPEECH);
-			}
+		if (routeID == null) {
+			log.error("putValuesInSession:" + intent.getName() + " route is null");
+			throw new InvalidInputException("No route in intent", "I could not hear that." + SPEECH);
 		}
-	} 
+
+		routeID = routeID.replaceAll("\\s+", "");
+		Message route = getMatchedRoute(routeID.toUpperCase());
+
+		if (route == null) {
+			log.error("putValuesInSession:" + intent.getName() + " route is null");
+			throw new InvalidInputException("Route does not match API",
+					"Could not find the bus line " + routeID + "." + SPEECH);
+		}
+
+		session.setAttribute(NAME, route.getRouteID());
+		session.setAttribute(ROUTE_NAME, route.getRouteName());
+		return route.getRouteID() + "," + route.getRouteName();
+
+	}
 
 	public String getValueFromIntentSlot(Intent intent) {
 		log.info("getValuesInSession"+intent.getName());
@@ -58,7 +65,7 @@ public class RouteHelper extends DataHelper {
 		return (slot!=null) ? slot.getValue() : null;
 	}
 	
-	public String getValueFromSession(){
+	public String getValueFromSession(Session session){
 		log.info("getValueFromSession");
 		if (session.getAttributes().containsKey(NAME)) {
 			return (String) session.getAttribute(NAME);

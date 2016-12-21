@@ -28,7 +28,7 @@ public class MapsService extends HttpServlet {
      */
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {   
         NearestStopLocator p = new NearestStopLocator();
-        
+        /*
         //Inputs fom UI:
         String source = request.getParameter("source").replaceAll("\\s","+");
         String route = request.getParameter("route").trim();
@@ -44,5 +44,6 @@ public class MapsService extends HttpServlet {
     	//direct to the results page
         RequestDispatcher view = request.getRequestDispatcher("result.jsp");
         view.forward(request, response);
+        */
     }
 }

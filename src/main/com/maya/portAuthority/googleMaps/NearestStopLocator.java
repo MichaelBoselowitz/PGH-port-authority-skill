@@ -19,7 +19,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.maya.portAuthority.GetNextBusSpeechlet;
+import com.maya.portAuthority.InvalidInputException;
 
 /**
  *
@@ -28,29 +28,37 @@ import com.maya.portAuthority.GetNextBusSpeechlet;
 public class NearestStopLocator {
 
 	private static Logger log = LoggerFactory.getLogger(NearestStopLocator.class);
-    LocationTracker track = null;
+    //LocationTracker track = null;
 
-    public NearestStopLocator() {
-        track = new LocationTracker();
-    }
+    //public NearestStopLocator() {
+        //track = new LocationTracker();
+    //}
    
-    public Stop process(String source, String routeID, String direction) throws IOException, JSONException{
+    public static Stop process(Coordinates source, String routeID, String direction) throws IOException, JSONException, InvalidInputException{
     	log.info("Process: source={}, routeId={}, direction={}", source, routeID, direction);
-    	List<Coordinates> sourceLocation = getSourceLocationCoordinates(source);
-        
-        //get the first location returned:
-        double lat = sourceLocation.get(0).getLat();
-        double lng =  sourceLocation.get(0).getLng();
-        
+    	if ((source==null)||(routeID==null)||(direction==null)){
+    		log.error("Bad Input");
+    		throw new InvalidInputException("Null input: source="+source+",routeID="+routeID+",direction="+direction,"I forgot something");
+    	}
+
         //Get list of stops of the route# returned by truetime:
         List<Stop> listOfStops = getStops(routeID, direction);
         
         //find nearest stop from the source location:
-        Stop nearestStop = findNearestStop(lat, lng, listOfStops);
+        Stop nearestStop = findNearestStop(source.getLat(), source.getLng(), listOfStops);
         
         return nearestStop;
         
     }
+    
+    public static Coordinates getSourceLocation(String source)throws IOException, JSONException, InvalidInputException {
+    	List<Coordinates> sourceLocation = getSourceLocationCoordinates(source);
+        
+        //get the first location returned:
+       return(sourceLocation.get(0));
+       
+    }
+    
     /**
      * Pads "Pittsburgh" to input and requests the Google location API which returns list of location details.
      * 
@@ -59,7 +67,7 @@ public class NearestStopLocator {
      * @throws IOException
      * @throws JSONException 
      */
-    public List<Coordinates> getSourceLocationCoordinates(String source) throws IOException, JSONException {
+    public static List<Coordinates> getSourceLocationCoordinates(String source) throws IOException, JSONException, InvalidInputException {
     	log.info("getSourceLocationCoordinates: source={}", source);
     	JSONObject currentLocationDetails = null;
         List<Coordinates> listOfLocationCoordinates = null;
@@ -67,7 +75,7 @@ public class NearestStopLocator {
         String currLocationURL = "https://maps.googleapis.com/maps/api/place/textsearch/json?query=" + currLocation + "&sensor=false&key=AIzaSyBzW19DGDOi_20t46SazRquCLw9UNp_C8s";
         currentLocationDetails = readJsonFromUrl(currLocationURL);
         if (currentLocationDetails != null) {
-            listOfLocationCoordinates = track.getLatLngDetails(currentLocationDetails, 5);
+            listOfLocationCoordinates = LocationTracker.getLatLngDetails(currentLocationDetails, 5);
         }
         return listOfLocationCoordinates;
     }
@@ -80,13 +88,13 @@ public class NearestStopLocator {
      * @throws IOException
      * @throws JSONException 
      */
-    public List<Stop> getStops(String routeID, String direction) throws IOException, JSONException{
+    public static List<Stop> getStops(String routeID, String direction) throws IOException, JSONException{
     	log.info("getStops: routeId={}, direction={}", routeID, direction);
     	String url =  "http://truetime.portauthority.org/bustime/api/v2/getstops?key=929FvbAPSEeyexCex5a7aDuus&rt="+routeID+"&dir="+direction.toUpperCase()+"&format=json";
        JSONObject stopsJSON = null;
        List<Stop> listOfStops = null;
        stopsJSON = readJsonFromUrl(url);
-       listOfStops = track.getStopDetails(stopsJSON);
+       listOfStops = LocationTracker.getStopDetails(stopsJSON);
        return listOfStops;
     }
     
@@ -100,7 +108,7 @@ public class NearestStopLocator {
      * @throws JSONException
      * @throws IOException 
      */
-    public Stop findNearestStop(double sourceLat, double sourceLon, List<Stop> stops) throws JSONException, IOException{
+    public static Stop findNearestStop(double sourceLat, double sourceLon, List<Stop> stops) throws JSONException, IOException{
     	log.info("findNearestStop: sourceLat={}, sourceLon={}, stops={}", sourceLat, sourceLon, stops);
     	Stop nearestStop = null;
         double shortestDistance = Double.MAX_VALUE;
@@ -122,7 +130,7 @@ public class NearestStopLocator {
      * @param destLon
      * @return 
      */
-    public double calculateDistance(double sourceLat, double sourceLon, double destLat, double destLon) throws JSONException, IOException{
+    public static double calculateDistance(double sourceLat, double sourceLon, double destLat, double destLon) throws JSONException, IOException{
     	log.info("calculateDistance: sourceLat={}, sourceLon={}, destLat={}, destLon={}", sourceLat, sourceLon, destLat,destLon );
     	String url =  "https://maps.googleapis.com/maps/api/distancematrix/json?units=imperial&origins="+sourceLat+","+sourceLon+"&destinations="+destLat+","+destLon+"&mode=walk&transit_mode=walking&key=AIzaSyBzW19DGDOi_20t46SazRquCLw9UNp_C8s";
        JSONObject distanceJSON = null;
@@ -134,7 +142,7 @@ public class NearestStopLocator {
     
     /***************************************Util methods***********************************************/
 
-    public double convertMileToFeet(String distance){
+    public static double convertMileToFeet(String distance){
     	log.info("convertMileToFeet: distance={}", distance);
     	
         double result = 0.0;

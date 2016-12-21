@@ -10,6 +10,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import com.amazon.speech.slu.Intent;
 import com.amazon.speech.slu.Slot;
 import com.amazon.speech.speechlet.Session;
+import com.maya.portAuthority.InvalidInputException;
 import com.maya.portAuthority.api.Message;
 import com.maya.portAuthority.api.TrueTimeMessageParser;
 
@@ -32,14 +33,17 @@ public class BusStopHelper extends DataHelper {
 	private static  String SESSION_STATION_ID= "StationID";
 
 	//private Intent intent;
-	private Session session;
+	//private Session session;
 
-	public BusStopHelper(Session s){
+	public BusStopHelper(){
 		log.info("constructor");
-		this.session=s;
+		//this.session=s;
 	}
 
-	public void putValuesInSession(Intent intent){
+	/**
+	 * @return Feedback Text for user. 
+	 */
+	public String putValuesInSession(Session session,Intent intent) throws InvalidInputException{
 		log.trace("putValuesInSession"+intent.getName() );
 		String stationName=getValueFromIntentSlot(intent);
 		if (stationName!=null){
@@ -47,7 +51,9 @@ public class BusStopHelper extends DataHelper {
 			session.setAttribute(NAME, stationName.toUpperCase()); 
 		} else {
 			log.error("stationName is null");
+			throw new InvalidInputException("StationName is null", "I didn't hear that."+SPEECH);
 		}
+		return "";
 	} 
 	
 	public String getValueFromIntentSlot(Intent i){
@@ -56,7 +62,7 @@ public class BusStopHelper extends DataHelper {
 		return (slot!=null) ? slot.getValue() : null;
 	}
 	
-	public String getValueFromSession(){
+	public String getValueFromSession(Session session){
 		log.info("getValueFromSession");
 		if (session.getAttributes().containsKey(NAME)) {
 			return (String) session.getAttribute(NAME);

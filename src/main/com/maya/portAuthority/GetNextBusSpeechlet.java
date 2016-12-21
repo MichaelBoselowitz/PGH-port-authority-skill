@@ -1,23 +1,19 @@
 package com.maya.portAuthority;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-import javax.xml.parsers.ParserConfigurationException;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.BasicConfigurator;
-import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xml.sax.SAXException;
 
 import com.amazon.speech.slu.Intent;
-import com.amazon.speech.slu.Slot;
 import com.amazon.speech.speechlet.IntentRequest;
 import com.amazon.speech.speechlet.LaunchRequest;
 import com.amazon.speech.speechlet.Session;
@@ -33,7 +29,6 @@ import com.amazon.speech.ui.Reprompt;
 import com.amazon.speech.ui.SimpleCard;
 import com.maya.portAuthority.api.Message;
 import com.maya.portAuthority.api.TrueTimeMessageParser;
-import com.maya.portAuthority.googleMaps.Stop;
 import com.maya.portAuthority.storage.PaDao;
 import com.maya.portAuthority.storage.PaDynamoDbClient;
 import com.maya.portAuthority.storage.PaInput;
@@ -44,7 +39,6 @@ import com.maya.portAuthority.googleMaps.*;
 public class GetNextBusSpeechlet implements Speechlet {
 	private static Logger log = LoggerFactory.getLogger(GetNextBusSpeechlet.class);
 
-	private static String SPEECH_NO_SUCH_STATION = "I can't find that station. Please say again.";
 
 	private static String SPEECH_INSTRUCTIONS = "I can lead you through providing a bus line, direction, and "
 			+ "bus stop to get departure information, "
@@ -57,8 +51,6 @@ public class GetNextBusSpeechlet implements Speechlet {
 	private static String AUDIO_WELCOME = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_welcome.mp3\" />";
 	private static String AUDIO_FAILURE = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_failure.mp3\" />";
 	private static String AUDIO_SUCCESS = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_success.mp3\" />";
-
-	
 
 	private SkillContext skillContext;
 
@@ -111,9 +103,9 @@ public class GetNextBusSpeechlet implements Speechlet {
 		
 		// TODO: Not a HASHMAP
 		this.dataHelpers = new HashMap<String, DataHelper>();// createDataHelpers(session);
-		dataHelpers.put(RouteHelper.INTENT_NAME, DataHelperFactory.getHelper(session, RouteHelper.NAME));
-		dataHelpers.put(LocationHelper.INTENT_NAME, DataHelperFactory.getHelper(session, LocationHelper.NAME));
-		dataHelpers.put(DirectionHelper.INTENT_NAME, DataHelperFactory.getHelper(session, DirectionHelper.NAME));
+		dataHelpers.put(RouteHelper.INTENT_NAME, DataHelperFactory.getHelper(RouteHelper.NAME));
+		dataHelpers.put(LocationHelper.INTENT_NAME, DataHelperFactory.getHelper(LocationHelper.NAME));
+		dataHelpers.put(DirectionHelper.INTENT_NAME, DataHelperFactory.getHelper(DirectionHelper.NAME));
 	}
 
 	/**
@@ -121,7 +113,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 	 */
 	public SpeechletResponse onIntent(IntentRequest request, Session session) throws SpeechletException {
 	     log.info("onIntent intent={}, requestId={}, sessionId={}", request.getIntent().getName(), request.getRequestId(), session.getSessionId());
-
+	 	String feedbackText = "";
 		try {
 			Intent intent = request.getIntent();
 			analytics.postEvent(AnalyticsManager.CATEGORY_INTENT, intent.getName());
@@ -129,13 +121,13 @@ public class GetNextBusSpeechlet implements Speechlet {
 				Iterator<DataHelper> itr = dataHelpers.values().iterator();
 				while (itr.hasNext()){
 					DataHelper dataHelper=itr.next();
-					dataHelper.putValuesInSession(intent);
+					feedbackText+=dataHelper.putValuesInSession(session,intent);
 				}
 
 
 			} else { //DirectionBusIntent {Direction} || RouteBusIntent {Route} || StationBusIntent {StationName}
 				DataHelper dataHelper = dataHelpers.get(intent.getName());
-				dataHelper.putValuesInSession(intent);
+				feedbackText=dataHelper.putValuesInSession(session,intent);
 			}
 		} catch (InvalidInputException e) {
 			analytics.postException(e.getMessage(), false);
@@ -144,7 +136,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 
 		
 		SpeechletResponse furtherQuestions;
-		if ((furtherQuestions=checkForAdditionalQuestions(session))!=null){
+		if ((furtherQuestions=checkForAdditionalQuestions(session, feedbackText))!=null){
 			return furtherQuestions;
 		} else if (log.isInfoEnabled()) {
 			logSession(session, "Returning response for:");
@@ -155,17 +147,27 @@ public class GetNextBusSpeechlet implements Speechlet {
 		try {
 			
 			//TODO: Make Session Data be a PaInput
-			Map<String,String> sessionData= getInputValuesFromSession();
+			//Map<String,String> sessionData= getInputValuesFromSession();
+			Map<String,Object> sessionData= session.getAttributes();
 			PaInputData inputData=PaInputData.newInstance();
-			inputData.setDirection(sessionData.get(DirectionHelper.NAME));
-			inputData.setRouteID(sessionData.get(RouteHelper.NAME));
-			inputData.setLocationName(sessionData.get(LocationHelper.NAME));
-
-
+			inputData.setDirection(sessionData.get(DirectionHelper.NAME).toString());
+			inputData.setRouteID(sessionData.get(RouteHelper.NAME).toString());
+			inputData.setLocationName(sessionData.get(LocationHelper.NAME).toString());
+			inputData.setLocationAddress(sessionData.get("address").toString());
+			inputData.setLocationLat(sessionData.get("lat").toString());
+			inputData.setLocationLong(sessionData.get("long").toString());
+			//Coordinates c=(Coordinates) session.getAttribute("coordinates");
+			//inputData.setAddress(c);
+					
 			//Need to translate Locaiton to Bus Stop by now. 
-			NearestStopLocator locator=new NearestStopLocator();
-			Stop nearestStop=locator.process(inputData.getLocationName(), inputData.getRouteID(),inputData.getDirection());
+			//Moved to LocationHelper
+			
+			//TODO- pull from session
+			//Coordinates c= NearestStopLocator.getSourceLocation(inputData.getLocationName());
+			Coordinates c=inputData.getCoordinates();
+			Stop nearestStop=NearestStopLocator.process(c, inputData.getRouteID(),inputData.getDirection());
 			inputData.setStop(nearestStop);
+
 			saveInputToDB(PaInput.newInstance(session, inputData));
 
 			// get speech response for all stops
@@ -188,20 +190,25 @@ public class GetNextBusSpeechlet implements Speechlet {
 		analytics.postSessionEvent(AnalyticsManager.ACTION_SESSION_END);
 	}
 
+	//////////////////////////////PRIVATE METHODS////////////////////////////
 	private SpeechletResponse checkForAdditionalQuestions(Session session) {
+		return checkForAdditionalQuestions(session, "");
+	}
+	
+	private SpeechletResponse checkForAdditionalQuestions(Session session, String feedbackText) {
 		if (log.isInfoEnabled()) {
-			logSession(session, "checkingForAdditionalQuestions");
+			logSession(session, "checkingForAdditionalQuestions: feedbackText={}"+feedbackText);
 		}
 		// Do I have all the data I need?
 		Iterator<DataHelper> itr = dataHelpers.values().iterator();
 		while (itr.hasNext()) {
 			DataHelper element = itr.next();
 
-			if (element.getValueFromSession() == null) {
-				log.info(element.getName() + ":" + element.getValueFromSession() + "==null");
-				return newAskResponse(session, element.getSpeech(), element.getSpeech());
+			if (element.getValueFromSession(session) == null) {
+				log.trace(element.getName() + ":" + element.getValueFromSession(session) + "==null");
+				return newAskResponse(session, feedbackText+","+element.getSpeech(), element.getSpeech());
 			} else {
-				log.info(element.getName() + ":" + element.getValueFromSession() + "!=null");
+				log.trace(element.getName() + ":" + element.getValueFromSession(session) + "!=null");
 			}
 		}
 
@@ -223,11 +230,15 @@ public class GetNextBusSpeechlet implements Speechlet {
 			// Define speech output
 			String speechOutput = "";
 			String textOutput = "";
+			
+			String locationOutput="The nearest stop to "+  inputData.getLocationName() +" is " + inputData.getStopName()+".";
 
+			//speechOutput="The nearest stop to "+  inputData.getLocationName() + " is " + inputData.getStopName()+".";
+				
 			if (messages.size() == 0) {
 				log.info("No Messages");
 
-				textOutput = " No " + inputData.getDirection() + ", " + inputData.getRouteID() + " is expected at " + inputData.getStopName()
+				textOutput = locationOutput+" No " + inputData.getDirection() + ", " + inputData.getRouteID() + " is expected at " + inputData.getStopName()
 						+ " in the next 30 minutes  ";
 				speechOutput = AUDIO_FAILURE + textOutput;
 
@@ -236,7 +247,9 @@ public class GetNextBusSpeechlet implements Speechlet {
 					log.error("1 error message:" + messages.get(0).getError());
 					textOutput = " No " + inputData.getDirection() + ", " + inputData.getRouteID() + " is expected at " + inputData.getStopName()
 							+ " in the next 30 minutes  ";
-					speechOutput = AUDIO_FAILURE + textOutput;
+					speechOutput = AUDIO_FAILURE + locationOutput+"<break time=\"0.1s\" />"+textOutput;
+					textOutput = locationOutput+textOutput;
+					
 				} else {
 					log.info(messages.size() + " messages");
 
@@ -245,20 +258,18 @@ public class GetNextBusSpeechlet implements Speechlet {
 						when = messages.get(i).getEstimate();
 						if (i == 0) {
 							if (when < 3) {
-								textOutput = "An " + inputData.getDirection() + " " + inputData.getRouteID() + " is arriving at " + inputData.getStopName()
-										+ " now ";
-								speechOutput = AUDIO_SUCCESS + "An " + inputData.getDirection() + " " + inputData.getRouteID() + " is arriving at "
-										+ inputData.getStopName() + " <break time=\"0.1s\" /> now ";
+								textOutput = " An " + inputData.getDirection() + " " + inputData.getRouteID() + " is arriving at now ";
+								speechOutput = AUDIO_SUCCESS + locationOutput+ "<break time=\"0.1s\" /> An " + inputData.getDirection() + " " + inputData.getRouteID() + " is arriving <break time=\"0.1s\" /> now ";
+								textOutput= locationOutput + textOutput;
 							} else {
-								textOutput = "An " + inputData.getDirection() + " " + inputData.getRouteID() + " will be arriving at " + inputData.getStopName()
-										+ " in " + when + " minutes ";
-								speechOutput = AUDIO_SUCCESS + textOutput;
+								textOutput = " An " + inputData.getDirection() + " " + inputData.getRouteID() + " will be arriving in " + when + " minutes ";
+								speechOutput += AUDIO_SUCCESS + locationOutput+ "<break time=\"0.1s\" />"+ textOutput;
+								textOutput= locationOutput + textOutput;
 
 							}
 						} else {
-							textOutput = textOutput + " ... and another in " + when + " minutes";
-							speechOutput = speechOutput + " <break time=\"0.25s\" /> and another in " + when
-									+ " minutes";
+							textOutput = textOutput + " ... and in " + when + " minutes";
+							speechOutput = speechOutput + " <break time=\"0.25s\" /> and in " + when + " minutes";
 						}
 					}
 				}
@@ -322,10 +333,19 @@ public class GetNextBusSpeechlet implements Speechlet {
 	 * @param intro
 	 */
 	private void logSession(Session session, String intro) {
-		Iterator<DataHelper> itr = dataHelpers.values().iterator();
+//		Iterator<DataHelper> itr = dataHelpers.values().iterator();
+//		while (itr.hasNext()) {
+//			DataHelper element = itr.next();
+//			log.info(intro + "Session:" + element.getName() + ":" + element.getValueFromSession());
+//		}
+//		log.info(intro+"Session:address:"+session.getAttribute("address") );
+//		log.info(session.toString());
+		Map <String, Object> attributes=session.getAttributes();
+		Set<String> set= attributes.keySet();
+		Iterator<String> itr=set.iterator();
 		while (itr.hasNext()) {
-			DataHelper element = itr.next();
-			log.info(intro + "Session:" + element.getName() + ":" + element.getValueFromSession());
+			String element=itr.next();
+			log.info(intro + "Session:" + element+ ":" + session.getAttribute(element));
 		}
 	}
 
@@ -377,19 +397,6 @@ public class GetNextBusSpeechlet implements Speechlet {
 		String returnValue = new String(output);
 		log.debug("replaceNumWithOrdinalWord returning:" + returnValue);
 		return returnValue;
-	}
-
-	/**
-	 * @deprecated
-	 * **/
-	private Map<String, String> getInputValuesFromSession() {
-		Map<String, String> input = new HashMap<String, String>();
-		Iterator<DataHelper> itr = dataHelpers.values().iterator();
-		while (itr.hasNext()) {
-			DataHelper element = itr.next();
-			input.put(element.getName(), element.getValueFromSession());
-		}
-		return input;
 	}
 	
 

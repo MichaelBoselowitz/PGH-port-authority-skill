@@ -3,6 +3,7 @@ package com.maya.portAuthority.util;
 import com.amazon.speech.slu.Intent;
 import com.amazon.speech.slu.Slot;
 import com.amazon.speech.speechlet.Session;
+import com.maya.portAuthority.InvalidInputException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,23 +19,25 @@ public class DirectionHelper extends DataHelper {
 	
 	private static  Logger log = LoggerFactory.getLogger(DirectionHelper.class);
 
-		private Session session;
+		//private Session session;
 	//private Intent intent;
 
-	public DirectionHelper(Session s){
+	public DirectionHelper(){
 		log.info("constructor");
-		this.session=s;
+		//this.session=s;
 	}
 
-	public void putValuesInSession(Intent intent){
+	public String putValuesInSession(Session session,Intent intent) throws InvalidInputException{
 		log.info("putValuesInSession"+intent.getName());
 
 		String direction=getValueFromIntentSlot(intent);
 		if (direction!=null){
 			session.setAttribute(NAME, direction.toUpperCase());
 		} else {
-			//log
+			log.error("stationName is null");
+			throw new InvalidInputException("StationName is null", "I didn't hear that."+SPEECH);
 		}
+		return "";
 	} 
 
 	@Override
@@ -44,7 +47,7 @@ public class DirectionHelper extends DataHelper {
 		return (slot!=null) ? slot.getValue() : null;
 	}
 	
-	public String getValueFromSession(){
+	public String getValueFromSession(Session session){
 		log.info("getValuesFromSession");
 		if (session.getAttributes().containsKey(NAME)) {
 			return (String) session.getAttribute(NAME);

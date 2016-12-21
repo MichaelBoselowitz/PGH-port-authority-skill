@@ -3,6 +3,7 @@ package com.maya.portAuthority.storage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.maya.portAuthority.googleMaps.Coordinates;
 import com.maya.portAuthority.googleMaps.Stop;
 
 /**
@@ -13,6 +14,7 @@ public class PaInputData {
     
 
 	private String locationName;
+	private String locationAddress;
     private String locationLat;
     private String locationLong;
     
@@ -123,6 +125,14 @@ public class PaInputData {
 		this.direction = direction;
 	}
 	
+	public String getLocationAddress() {
+		return locationAddress;
+	}
+
+	public void setLocationAddress(String locationAddress) {
+		this.locationAddress = locationAddress;
+	}
+
 	public void setStop(Stop stop){
 		setStopName(stop.getStopName());
 		setStopID(stop.getStopID());
@@ -130,10 +140,24 @@ public class PaInputData {
 		setStopLon(stop.getLongitude());
 	}
 	
+	public void setLocation( Coordinates c){
+		setLocationAddress(c.getAddress());
+		setLocationLat(c.getLat() + "");
+		setLocationLong(c.getLng() + "");
+	}
+	
 	public String toString() {
 		return "PaInputData [locationName=" + locationName + ", locationLat=" + locationLat + ", locationLong="
 				+ locationLong + ", stopID=" + stopID + ", stopName=" + stopName + ", stopLat=" + stopLat + ", stopLon="
 				+ stopLon + ", routeID=" + routeID + ", routeName=" + routeName + ", direction=" + direction + "]";
+	}
+
+	public Coordinates getCoordinates() {
+		Coordinates c=new Coordinates();
+		c.setAddress(getLocationAddress() );
+		c.setLat(new Double(this.getLocationLat()).doubleValue() );
+		c.setLng(new Double(this.getLocationLong()).doubleValue() );
+		return c;
 	}
     
 }
