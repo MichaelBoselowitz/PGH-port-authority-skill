@@ -10,11 +10,11 @@ import com.amazon.speech.slu.Intent;
 public abstract class DataHelper {	
 	public static String SPEECH;
 
-	public abstract void putValuesInSession(Intent intent) throws InvalidInputException;
+	public abstract String putValuesInSession(Session s, Intent intent) throws InvalidInputException;
 	
 	public abstract String getValueFromIntentSlot(Intent intent);
 	
-	public abstract String getValueFromSession();
+	public abstract String getValueFromSession(Session s);
 
 	public abstract String getName();
 	

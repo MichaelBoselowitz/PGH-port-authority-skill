@@ -4,12 +4,8 @@
       "intent": "OneshotBusIntent",
       "slots": [
         {
-          "name": "MainStreet",
-          "type": "LIST_OF_STOPS"
-        },
-        {
-          "name": "CrossStreet",
-          "type": "LIST_OF_STOPS"
+          "name": "Location",
+          "type":  "AMAZON.StreetAddress"
         },
         {
           "name": "Direction",
@@ -39,35 +35,15 @@
         }
       ]
     },
+ 
  {
-      "intent": "StationBusIntent",
+      "intent": "LocationBusIntent",
       "slots": [
         {
-          "name": "MainStreet",
-          "type": "LIST_OF_STOPS"
-        },
-        {
-          "name": "CrossStreet",
-          "type": "LIST_OF_STOPS"
-        }
-      ]
-    },
- {
-      "intent": "MainStreetBusIntent",
-      "slots": [
-        {
-          "name": "MainStreet",
-          "type": "LIST_OF_STOPS"
-        }
-      ]
-    },
- {
-      "intent": "CrossStreetBusIntent",
-      "slots": [
-        {
-          "name": "CrossStreet",
-          "type": "LIST_OF_STOPS"
+          "name": "Location",
+          "type":  "AMAZON.StreetAddress"
         }
       ]
     }
+ 
   ]}

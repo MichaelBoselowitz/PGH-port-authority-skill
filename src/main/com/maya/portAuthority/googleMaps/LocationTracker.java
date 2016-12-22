@@ -10,6 +10,11 @@ import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.maya.portAuthority.InvalidInputException;
+import com.maya.portAuthority.storage.PaInput;
 
 /**
  *
@@ -17,9 +22,11 @@ import org.json.JSONObject;
  */
 public class LocationTracker {
 
-    List<Coordinates> coordinates = null;
-    List<Stop> stops = null;
-    ErrorMessage e = null;
+	private static Logger log = LoggerFactory.getLogger(LocationTracker.class);
+
+    //List<Coordinates> coordinates = null;
+    //List<Stop> stops = null;
+    //ErrorMessage e = null;
     /**
      * Case 1: Request returns list of Coordinates
      * Proceed to Step 2
@@ -35,13 +42,13 @@ public class LocationTracker {
      * @return
      * @throws JSONException 
      */
-    public List<Coordinates> getLatLngDetails(JSONObject json, int limit) throws JSONException {
-        coordinates = new ArrayList<>();
-        e = new ErrorMessage();
+    public static List<Coordinates> getLatLngDetails(JSONObject json, int limit) throws JSONException, InvalidInputException {
+    	List<Coordinates> coordinates = new ArrayList<>();
+    	ErrorMessage e = new ErrorMessage();
         JSONArray results = json.getJSONArray("results");
-
+        log.debug("JSON Results Size={}",results.length());
         if (results != null) {
-            if (results.length() != 0 && results.length() <= limit) {
+            if (results.length() != 0){// && results.length() <= limit) {
                 for (int i = 0; i < results.length(); i++) {
                     JSONObject location = results.getJSONObject(i).getJSONObject("geometry").getJSONObject("location");
                     double lat = location.getDouble("lat");
@@ -49,19 +56,22 @@ public class LocationTracker {
                     Coordinates c = new Coordinates();
                     c.setLat(lat);
                     c.setLng(lng);
+                    String locationName = results.getJSONObject(i).getString("formatted_address");
+                    c.setAddress(locationName);
                     coordinates.add(c);
                 }
             } else if (results.length() == 0) {
                 e.setError("I did not understand the source location.");
-            } else if (results.length() > limit) {
-                e.setError("Could you please be more specific?");
+                throw new InvalidInputException("No results from JSON","I did not understand the source location");
+            //} else if (results.length() > limit) {
+            //    e.setError("Could you please be more specific?");
             }
         }
         return coordinates;
     }
     
-    public List<Stop> getStopDetails(JSONObject json) throws JSONException {
-        stops = new ArrayList<>();
+    public static List<Stop> getStopDetails(JSONObject json) throws JSONException {
+    	List<Stop> stops = new ArrayList<>();
         JSONArray stopsResponse = json.getJSONObject("bustime-response").getJSONArray("stops");
 
         if (stopsResponse != null) {

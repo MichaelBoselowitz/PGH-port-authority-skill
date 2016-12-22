@@ -3,6 +3,7 @@ package com.maya.portAuthority.util;
 import com.amazon.speech.slu.Intent;
 import com.amazon.speech.slu.Slot;
 import com.amazon.speech.speechlet.Session;
+import com.maya.portAuthority.InvalidInputException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,28 +15,40 @@ import org.slf4j.LoggerFactory;
 public class DirectionHelper extends DataHelper {
 	public static final String INTENT_NAME="DirectionBusIntent";
 	public static final String NAME = "Direction";
-	public static final String SPEECH ="Which direction are you <w role=\"ivona:NN\">traveling</w>, inbound or outbound ?";
+	public static final String SPEECH ="In which direction are you <w role=\"ivona:NN\">traveling</w>?";
 	
 	private static  Logger log = LoggerFactory.getLogger(DirectionHelper.class);
 
-		private Session session;
+		//private Session session;
 	//private Intent intent;
 
-	public DirectionHelper(Session s){
+	public DirectionHelper(){
 		log.trace("constructor");
-		this.session=s;
+		//this.session=s;
 	}
 
-	public void putValuesInSession(Intent intent){
-		log.trace("putValuesInSession");
+	public String putValuesInSession(Session session,Intent intent) throws InvalidInputException{
+		log.trace("putValuesInSession"+intent.getName());
 
 		String direction=getValueFromIntentSlot(intent);
 		if (direction!=null){
-			session.setAttribute(NAME, direction.toUpperCase());
+			session.setAttribute(NAME, translateDirection(direction));
 		} else {
-			//log
+			log.error("direction is null");
+			throw new InvalidInputException("Direction is null", "I didn't hear that."+SPEECH);
 		}
+		return "";
 	} 
+	
+	private static String translateDirection(String spoken){
+		if (spoken.equalsIgnoreCase("away")){
+			return "OUTBOUND";
+		} else if (spoken.equalsIgnoreCase("towards")){
+			return "INBOUND";
+		} else {
+			return spoken.toUpperCase();
+		}
+	}
 
 	@Override
 	public String getValueFromIntentSlot(Intent i){
@@ -44,7 +57,7 @@ public class DirectionHelper extends DataHelper {
 		return (slot!=null) ? slot.getValue() : null;
 	}
 	
-	public String getValueFromSession(){
+	public String getValueFromSession(Session session){
 		log.trace("getValuesFromSession");
 		if (session.getAttributes().containsKey(NAME)) {
 			return (String) session.getAttribute(NAME);

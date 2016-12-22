@@ -15,6 +15,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.json.JSONException;
 
+import com.maya.portAuthority.InvalidInputException;
+
 /**
  *
  * @author Adithya
@@ -27,22 +29,26 @@ public class MapsService extends HttpServlet {
      * direction of transit.
      */
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {   
-        NearestStopLocator p = new NearestStopLocator();
-        
+        //NearestStopLocator p = new NearestStopLocator();
+      
         //Inputs fom UI:
         String source = request.getParameter("source").replaceAll("\\s","+");
         String route = request.getParameter("route").trim();
         String direction = request.getParameter("direction").trim();
         
         try {
-           Stop stop = p.process(source, route, direction);
-           request.setAttribute("nearestStopName", stop.getStopName());
+        	Coordinates c = NearestStopLocator.getSourceLocation(source);
+        	Stop stop = NearestStopLocator.process(c, route, direction);
+        	request.setAttribute("nearestStopName", stop.getStopName());
         } catch (JSONException ex) {
-            Logger.getLogger(MapsService.class.getName()).log(Level.SEVERE, null, ex);
+        	Logger.getLogger(MapsService.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (InvalidInputException ex) {
+        	Logger.getLogger(MapsService.class.getName()).log(Level.SEVERE, null, ex);
         }
 
     	//direct to the results page
         RequestDispatcher view = request.getRequestDispatcher("result.jsp");
         view.forward(request, response);
+        
     }
 }

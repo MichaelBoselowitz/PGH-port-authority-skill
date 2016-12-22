@@ -68,7 +68,7 @@ public class PaUserDataItem {
                 return OBJECT_MAPPER.readValue(value, new TypeReference<PaInputData>() {
                 });
             } catch (Exception e) {
-                throw new IllegalStateException("Unable to unmarshall input data value", e);
+                throw new IllegalStateException("Unable to unmarshall input data value:"+value, e);
             }
         }
     }

@@ -134,6 +134,33 @@ public class TrueTimeMessageParser extends BaseAPIParser {
 		LOGGER.debug("getPredictions:messages size"+messages.size());
 		return messages;
 	}
+	
+	/**
+	 * get predictions for all routes that stop at this stop.
+	 * @param stationID
+	 * @return
+	 */
+	public static List<Message> getPredictions (String stationID){
+		return getPredictions(stationID, 10);
+	}
+	
+	public static List<Message> getPredictions (String stationID, int maxValues){
+		List<Message> messages= new ArrayList<Message>();
+		String apiString= TRUETIME_URL+VERSION+CMD_PREDICTION+"?key="+ACCESS_ID+"&stpid="+stationID+"&top="+maxValues;
+		LOGGER.debug("getPredictions:apiString="+apiString);
+
+		//TrueTimeMessageParser tester = new TrueTimeMessageParser(apiString);
+		try {
+			messages=TrueTimeMessageParser.parse(apiString);
+		} catch (IOException | SAXException | ParserConfigurationException e) {
+			messages.clear();
+			Message errorMsg=new Message();
+			errorMsg.setError(e.getMessage());
+			messages.add(errorMsg);
+		}
+		LOGGER.debug("getPredictions:messages size"+messages.size());
+		return messages;
+	}
 
 
 	public static List<Message> parse(String apiString) 

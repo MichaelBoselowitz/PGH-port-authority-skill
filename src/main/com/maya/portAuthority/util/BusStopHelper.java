@@ -10,9 +10,12 @@ import javax.xml.parsers.ParserConfigurationException;
 import com.amazon.speech.slu.Intent;
 import com.amazon.speech.slu.Slot;
 import com.amazon.speech.speechlet.Session;
+import com.maya.portAuthority.InvalidInputException;
 import com.maya.portAuthority.api.Message;
 import com.maya.portAuthority.api.TrueTimeMessageParser;
 
+import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
@@ -30,32 +33,37 @@ public class BusStopHelper extends DataHelper {
 	private static  String SESSION_STATION_ID= "StationID";
 
 	//private Intent intent;
-	private Session session;
+	//private Session session;
 
-	public BusStopHelper(Session s){
-		log.trace("constructor");
-		this.session=s;
+	public BusStopHelper(){
+		log.info("constructor");
+		//this.session=s;
 	}
 
-	public void putValuesInSession(Intent intent){
-		log.trace("putValuesInSession" );
+	/**
+	 * @return Feedback Text for user. 
+	 */
+	public String putValuesInSession(Session session,Intent intent) throws InvalidInputException{
+		log.trace("putValuesInSession"+intent.getName() );
 		String stationName=getValueFromIntentSlot(intent);
 		if (stationName!=null){
 			log.debug("putting value in session Slot station:"+stationName);
 			session.setAttribute(NAME, stationName.toUpperCase()); 
 		} else {
 			log.error("stationName is null");
+			throw new InvalidInputException("StationName is null", "I didn't hear that."+SPEECH);
 		}
+		return "";
 	} 
 	
 	public String getValueFromIntentSlot(Intent i){
-		log.trace("getValueFromIntentSlot:"+i.getName());
+		log.info("getValueFromIntentSlot:"+i.getName());
 		Slot slot = i.getSlot(NAME);
 		return (slot!=null) ? slot.getValue() : null;
 	}
 	
-	public String getValueFromSession(){
-		log.trace("getValueFromSession");
+	public String getValueFromSession(Session session){
+		log.info("getValueFromSession");
 		if (session.getAttributes().containsKey(NAME)) {
 			return (String) session.getAttribute(NAME);
 		} else {
