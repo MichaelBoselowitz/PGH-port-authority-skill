@@ -5,7 +5,7 @@ import com.amazon.speech.slu.Intent;
 import com.amazon.speech.slu.Slot;
 import com.amazon.speech.speechlet.Session;
 import com.maya.portAuthority.InvalidInputException;
-import com.maya.portAuthority.googleMaps.Coordinates;
+import com.maya.portAuthority.util.Coordinates;
 import com.maya.portAuthority.googleMaps.NearestStopLocator;
 
 import java.io.IOException;

@@ -3,8 +3,8 @@ package com.maya.portAuthority.storage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.maya.portAuthority.googleMaps.Coordinates;
-import com.maya.portAuthority.googleMaps.Stop;
+import com.maya.portAuthority.util.Coordinates;
+import com.maya.portAuthority.util.Stop;
 
 /**
  * 

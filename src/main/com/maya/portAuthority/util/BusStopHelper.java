@@ -1,24 +1,13 @@
 
 package com.maya.portAuthority.util;
 
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.List;
-
-import javax.xml.parsers.ParserConfigurationException;
 
 import com.amazon.speech.slu.Intent;
 import com.amazon.speech.slu.Slot;
 import com.amazon.speech.speechlet.Session;
 import com.maya.portAuthority.InvalidInputException;
-import com.maya.portAuthority.api.Message;
-import com.maya.portAuthority.api.TrueTimeMessageParser;
-
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xml.sax.SAXException;
 /**
  * @author brown@maya.com
  *
@@ -32,12 +21,9 @@ public class BusStopHelper extends DataHelper {
 
 	private static  String SESSION_STATION_ID= "StationID";
 
-	//private Intent intent;
-	//private Session session;
 
 	public BusStopHelper(){
 		log.info("constructor");
-		//this.session=s;
 	}
 
 	/**

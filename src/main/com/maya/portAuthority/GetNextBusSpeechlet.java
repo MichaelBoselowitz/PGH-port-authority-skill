@@ -29,7 +29,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazon.speech.ui.Reprompt;
 import com.amazon.speech.ui.SimpleCard;
 import com.maya.portAuthority.api.Message;
-import com.maya.portAuthority.api.TrueTimeMessageParser;
+import com.maya.portAuthority.api.TrueTimeAPI;
 import com.maya.portAuthority.storage.PaDao;
 import com.maya.portAuthority.storage.PaDynamoDbClient;
 import com.maya.portAuthority.storage.PaInput;
@@ -41,19 +41,18 @@ public class GetNextBusSpeechlet implements Speechlet {
 	private static Logger log = LoggerFactory.getLogger(GetNextBusSpeechlet.class);
 
 
-	private static String SPEECH_INSTRUCTIONS = "I can lead you through providing a bus line, direction, and "
-			+ "bus stop to get departure information, "
-			+ "or you can simply open Port Authroity and ask a question like, "
-			+ "when is the next outbound P1 leaving sixth and smithfield. "
-			+ "For a list of supported buslines, ask what bus lines are supported. ";
+//	private static String SPEECH_INSTRUCTIONS = "I can lead you through providing a bus line, direction, and "
+//			+ "bus stop to get departure information, "
+//			+ "or you can simply open Port Authroity and ask a question like, "
+//			+ "when is the next outbound P1 leaving sixth and smithfield. ";
 
 	private static String SPEECH_WELCOME = "Welcome to Pittsburgh Port Authority ";
 
 	private static String AUDIO_WELCOME = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_welcome.mp3\" />";
 	private static String AUDIO_FAILURE = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_failure.mp3\" />";
 	private static String AUDIO_SUCCESS = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_success.mp3\" />";
-	private static String INCLUDE_ROUTE="IncludeRoute";
-	private SkillContext skillContext;
+	
+	//private SkillContext skillContext;
 
 	private Map<String, DataHelper> dataHelpers;
 	
@@ -72,7 +71,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 	public SpeechletResponse onLaunch(LaunchRequest request, Session session) throws SpeechletException {
 		BasicConfigurator.configure();
 		log.info("onLaunch requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
-		skillContext = new SkillContext();
+		//skillContext = new SkillContext();
 
 		if (amazonDynamoDBClient == null) {
 			amazonDynamoDBClient = new AmazonDynamoDBClient();
@@ -194,7 +193,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 	}
 	
 	private SpeechletResponse checkForAdditionalQuestions(Session session, String feedbackText) {
-		if (log.isInfoEnabled()) {
+		if (log.isDebugEnabled()) {
 			logSession(session, "checkingForAdditionalQuestions: feedbackText={}"+feedbackText);
 		}
 		// Do I have all the data I need?
@@ -222,7 +221,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 		
 		try{
 			List<Message> messages = new ArrayList<Message>();
-			messages = TrueTimeMessageParser.getPredictions(inputData.getStopID());
+			messages = TrueTimeAPI.getPredictions(inputData.getStopID());
 
 			if (messages.size() == 0) {
 				log.info("No Messages");
@@ -291,7 +290,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 
 		
 		List<Message> messages = new ArrayList<Message>();
-		messages = TrueTimeMessageParser.getPredictions(inputData.getRouteID(), inputData.getStopID());
+		messages = TrueTimeAPI.getPredictions(inputData.getRouteID(), inputData.getStopID());
 		log.info("getAnswer... with " + messages.size() + "messages");
 
 		try {

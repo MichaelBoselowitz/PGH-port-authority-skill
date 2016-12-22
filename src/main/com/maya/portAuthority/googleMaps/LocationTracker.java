@@ -14,7 +14,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.maya.portAuthority.InvalidInputException;
-import com.maya.portAuthority.storage.PaInput;
+import com.maya.portAuthority.util.Coordinates;
+import com.maya.portAuthority.util.Stop;
 
 /**
  *
@@ -24,18 +25,13 @@ public class LocationTracker {
 
 	private static Logger log = LoggerFactory.getLogger(LocationTracker.class);
 
-    //List<Coordinates> coordinates = null;
-    //List<Stop> stops = null;
-    //ErrorMessage e = null;
     /**
      * Case 1: Request returns list of Coordinates
      * Proceed to Step 2
      * 
      * Case 2: Unable to understand source location
      * Ask user to try again.
-     * 
-     * Case 3: Source location very generic
-     * Ask user to be more specific.
+
      * 
      * @param json returned by striking the Google maps API
      * @param limit set limit to the number of places returned by the API
@@ -44,28 +40,22 @@ public class LocationTracker {
      */
     public static List<Coordinates> getLatLngDetails(JSONObject json, int limit) throws JSONException, InvalidInputException {
     	List<Coordinates> coordinates = new ArrayList<>();
-    	ErrorMessage e = new ErrorMessage();
         JSONArray results = json.getJSONArray("results");
         log.debug("JSON Results Size={}",results.length());
-        if (results != null) {
-            if (results.length() != 0){// && results.length() <= limit) {
-                for (int i = 0; i < results.length(); i++) {
-                    JSONObject location = results.getJSONObject(i).getJSONObject("geometry").getJSONObject("location");
-                    double lat = location.getDouble("lat");
-                    double lng = location.getDouble("lng");
-                    Coordinates c = new Coordinates();
-                    c.setLat(lat);
-                    c.setLng(lng);
-                    String locationName = results.getJSONObject(i).getString("formatted_address");
-                    c.setAddress(locationName);
-                    coordinates.add(c);
-                }
-            } else if (results.length() == 0) {
-                e.setError("I did not understand the source location.");
-                throw new InvalidInputException("No results from JSON","I did not understand the source location");
-            //} else if (results.length() > limit) {
-            //    e.setError("Could you please be more specific?");
-            }
+        if (results.length() == 0) {
+            throw new InvalidInputException("No results from JSON","I did not understand the source location");
+        }
+        int numResultsToReturn=Math.min(limit, results.length());
+        for (int i = 0; i < numResultsToReturn; i++) {
+        	JSONObject location = results.getJSONObject(i).getJSONObject("geometry").getJSONObject("location");
+        	double lat = location.getDouble("lat");
+        	double lng = location.getDouble("lng");
+        	Coordinates c = new Coordinates();
+        	c.setLat(lat);
+        	c.setLng(lng);
+        	String address = results.getJSONObject(i).getString("formatted_address");
+        	c.setAddress(address);
+        	coordinates.add(c);
         }
         return coordinates;
     }
