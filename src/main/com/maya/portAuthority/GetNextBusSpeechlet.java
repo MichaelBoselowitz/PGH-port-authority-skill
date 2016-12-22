@@ -250,7 +250,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 				results.add(new Result(messages.get(i).getRouteID(), messages.get(i).getEstimate()));
 			}
 			//TODO: Collect Route responses together, but Return the first bus first. 
-			//Collections.sort(results);
+			Collections.sort(results);
 			
 			locationText="At " +inputData.getStopName()+",";
 			textOutput=locationText;
