@@ -29,25 +29,27 @@ public class LocationHelper extends DataHelper {
 	//private Session session;
 
 	public LocationHelper(){
-		log.info("constructor");
+		log.trace("constructor");
 		//this.session=s;
 	}
 
 	public String putValuesInSession(Session session, Intent intent) throws InvalidInputException {
-		log.info("putValuesInSession" + intent.getName());
+		log.trace("putValuesInSession" + intent.getName());
 		try {
 			String location = getValueFromIntentSlot(intent);
 			if (location != null) {
 				log.debug("putting value in session Slot Location:" + location);
 				session.setAttribute(NAME, location.toUpperCase());
 				Coordinates c = NearestStopLocator.getSourceLocation(location);
-				String[] address = c.getAddress().split(",");
-				log.info("address:"+address);	
-				log.info("coordinates:"+c);
+				String streetAddress = simplifyAddress(c.getAddress());
 				session.setAttribute("lat", c.getLat());
 				session.setAttribute("long", c.getLng());
-				session.setAttribute("address", address[0]);
-				return "I found "+location+" at "+address[0]+".";
+				session.setAttribute("address", streetAddress);
+				if (!location.equalsIgnoreCase(streetAddress)){
+					return "I found "+location+" at "+streetAddress+".";
+				} else {
+					return "";
+				}
 			} else {
 				log.error("location is null");
 				throw new InvalidInputException("No Location in Intent", "Please repeat your location." + SPEECH);
@@ -57,6 +59,11 @@ public class LocationHelper extends DataHelper {
 		} catch (IOException ioE) {
 			throw new InvalidInputException("Cannot reach Google Maps ", ioE, "Please repeat your location." + SPEECH);
 		}
+	}
+	
+	public static String simplifyAddress(String address){
+		String[] addressLines = address.split(",");
+		return addressLines[0];
 	}
 	
 	public String getValueFromIntentSlot(Intent i){

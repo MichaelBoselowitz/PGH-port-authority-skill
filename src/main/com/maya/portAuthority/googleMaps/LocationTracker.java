@@ -46,7 +46,7 @@ public class LocationTracker {
     	List<Coordinates> coordinates = new ArrayList<>();
     	ErrorMessage e = new ErrorMessage();
         JSONArray results = json.getJSONArray("results");
-        log.info("JSON Results Size={}",results.length());
+        log.debug("JSON Results Size={}",results.length());
         if (results != null) {
             if (results.length() != 0){// && results.length() <= limit) {
                 for (int i = 0; i < results.length(); i++) {

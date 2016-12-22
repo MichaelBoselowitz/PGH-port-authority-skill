@@ -151,13 +151,5 @@ public class PaInputData {
 				+ locationLong + ", stopID=" + stopID + ", stopName=" + stopName + ", stopLat=" + stopLat + ", stopLon="
 				+ stopLon + ", routeID=" + routeID + ", routeName=" + routeName + ", direction=" + direction + "]";
 	}
-
-	public Coordinates getCoordinates() {
-		Coordinates c=new Coordinates();
-		c.setAddress(getLocationAddress() );
-		c.setLat(new Double(this.getLocationLat()).doubleValue() );
-		c.setLng(new Double(this.getLocationLong()).doubleValue() );
-		return c;
-	}
     
 }

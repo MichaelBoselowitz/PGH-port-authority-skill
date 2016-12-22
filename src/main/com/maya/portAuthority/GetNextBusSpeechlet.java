@@ -1,6 +1,7 @@
 package com.maya.portAuthority;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -51,7 +52,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 	private static String AUDIO_WELCOME = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_welcome.mp3\" />";
 	private static String AUDIO_FAILURE = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_failure.mp3\" />";
 	private static String AUDIO_SUCCESS = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_success.mp3\" />";
-
+	private static String INCLUDE_ROUTE="IncludeRoute";
 	private SkillContext skillContext;
 
 	private Map<String, DataHelper> dataHelpers;
@@ -83,7 +84,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 		PaInput input = inputDao.getPaInput(session);
 		if ((input != null) && input.hasAllData()){
 			analytics.postEvent(AnalyticsManager.CATEGORY_LAUNCH, "Return Saved");
-			return buildResponse(input.getData());
+			return buildAllRoutesResponse(input.getData());
 		} else {
 			analytics.postEvent(AnalyticsManager.CATEGORY_LAUNCH, "Welcome");
 			return newAskResponse(AUDIO_WELCOME + SPEECH_WELCOME + RouteHelper.SPEECH, RouteHelper.SPEECH);
@@ -124,7 +125,6 @@ public class GetNextBusSpeechlet implements Speechlet {
 					feedbackText+=dataHelper.putValuesInSession(session,intent);
 				}
 
-
 			} else { //DirectionBusIntent {Direction} || RouteBusIntent {Route} || StationBusIntent {StationName}
 				DataHelper dataHelper = dataHelpers.get(intent.getName());
 				feedbackText=dataHelper.putValuesInSession(session,intent);
@@ -152,19 +152,17 @@ public class GetNextBusSpeechlet implements Speechlet {
 			PaInputData inputData=PaInputData.newInstance();
 			inputData.setDirection(sessionData.get(DirectionHelper.NAME).toString());
 			inputData.setRouteID(sessionData.get(RouteHelper.NAME).toString());
+			inputData.setRouteName(sessionData.get(RouteHelper.ROUTE_NAME).toString());
 			inputData.setLocationName(sessionData.get(LocationHelper.NAME).toString());
 			inputData.setLocationAddress(sessionData.get("address").toString());
 			inputData.setLocationLat(sessionData.get("lat").toString());
 			inputData.setLocationLong(sessionData.get("long").toString());
-			//Coordinates c=(Coordinates) session.getAttribute("coordinates");
-			//inputData.setAddress(c);
-					
-			//Need to translate Locaiton to Bus Stop by now. 
-			//Moved to LocationHelper
-			
-			//TODO- pull from session
-			//Coordinates c= NearestStopLocator.getSourceLocation(inputData.getLocationName());
-			Coordinates c=inputData.getCoordinates();
+
+			Coordinates c=new Coordinates();
+			c.setAddress(inputData.getLocationAddress() );
+			c.setLat(new Double(inputData.getLocationLat()).doubleValue() );
+			c.setLng(new Double(inputData.getLocationLong()).doubleValue() );
+
 			Stop nearestStop=NearestStopLocator.process(c, inputData.getRouteID(),inputData.getDirection());
 			inputData.setStop(nearestStop);
 
@@ -216,81 +214,151 @@ public class GetNextBusSpeechlet implements Speechlet {
 	}
 
 
-	private SpeechletResponse buildResponse(PaInputData inputData) {
-		List<Message> messages = new ArrayList<Message>();
-		messages = TrueTimeMessageParser.getPredictions(inputData.getRouteID(), inputData.getStopID());
-		
+	private SpeechletResponse buildAllRoutesResponse(PaInputData inputData) {
+		String speechOutput = "";
+		String textOutput = "";
+		String locationText;
 		SsmlOutputSpeech outputSpeech = new SsmlOutputSpeech();
-		// PlainTextOutputSpeech outputSpeech = new PlainTextOutputSpeech();
-		SimpleCard card = new SimpleCard();
-		int when;
-		log.info("getAnswer... with " + messages.size() + "messages");
+		
+		try{
+			List<Message> messages = new ArrayList<Message>();
+			messages = TrueTimeMessageParser.getPredictions(inputData.getStopID());
 
-		try {
-			// Define speech output
-			String speechOutput = "";
-			String textOutput = "";
-			
-			String locationOutput="The nearest stop to "+  inputData.getLocationName() +" is " + inputData.getStopName()+".";
-
-			//speechOutput="The nearest stop to "+  inputData.getLocationName() + " is " + inputData.getStopName()+".";
-				
 			if (messages.size() == 0) {
 				log.info("No Messages");
 
-				textOutput = locationOutput+" No " + inputData.getDirection() + ", " + inputData.getRouteID() + " is expected at " + inputData.getStopName()
-						+ " in the next 30 minutes  ";
+				textOutput = " No " + inputData.getDirection() + ", busses are expected at " + inputData.getStopName()
+				+ " in the next 30 minutes  ";
 				speechOutput = AUDIO_FAILURE + textOutput;
-
-			} else {
-				if ((messages.size() == 1) && (messages.get(0).getMessageType().equals(Message.ERROR))) {
-					log.error("1 error message:" + messages.get(0).getError());
-					textOutput = " No " + inputData.getDirection() + ", " + inputData.getRouteID() + " is expected at " + inputData.getStopName()
-							+ " in the next 30 minutes  ";
-					speechOutput = AUDIO_FAILURE + locationOutput+"<break time=\"0.1s\" />"+textOutput;
-					textOutput = locationOutput+textOutput;
-					
-				} else {
-					log.info(messages.size() + " messages");
-
-					for (int i = 0; i < messages.size(); i++) {
-						log.info("Message[" + i + "]= " + messages.get(i).getMessageType());
-						when = messages.get(i).getEstimate();
-						if (i == 0) {
-							if (when < 3) {
-								textOutput = " An " + inputData.getDirection() + " " + inputData.getRouteID() + " is arriving at now ";
-								speechOutput = AUDIO_SUCCESS + locationOutput+ "<break time=\"0.1s\" /> An " + inputData.getDirection() + " " + inputData.getRouteID() + " is arriving <break time=\"0.1s\" /> now ";
-								textOutput= locationOutput + textOutput;
-							} else {
-								textOutput = " An " + inputData.getDirection() + " " + inputData.getRouteID() + " will be arriving in " + when + " minutes ";
-								speechOutput += AUDIO_SUCCESS + locationOutput+ "<break time=\"0.1s\" />"+ textOutput;
-								textOutput= locationOutput + textOutput;
-
-							}
-						} else {
-							textOutput = textOutput + " ... and in " + when + " minutes";
-							speechOutput = speechOutput + " <break time=\"0.25s\" /> and in " + when + " minutes";
-						}
-					}
-				}
+				analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "No Result", textOutput, messages.size());
+				outputSpeech.setSsml("<speak> " + speechOutput + "</speak>");
+				return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput));
 			}
+			
+			if ((messages.size() == 1) && (messages.get(0).getMessageType().equals(Message.ERROR))) {
+				log.error("1 error message:" + messages.get(0).getError());
+				textOutput = " No " + inputData.getDirection() + ", busses are expected at " + inputData.getStopName()
+				+ " in the next 30 minutes  ";
+				speechOutput = AUDIO_FAILURE +textOutput;
+				analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "No Result", textOutput, messages.size());
+				outputSpeech.setSsml("<speak> " + speechOutput + "</speak>");
+				return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput));
 
-			// Create the Simple card content.
-
-			card.setTitle("Pittsburgh Port Authority");
-			card.setContent(textOutput);
-
-			// Create the plain text output
-			// outputSpeech.setText(speechOutput);
+			} 
+			ArrayList<Result> results=new ArrayList<Result>();
+			for (int i = 0; i < messages.size(); i++) {				
+				results.add(new Result(messages.get(i).getRouteID(), messages.get(i).getEstimate()));
+			}
+			//TODO: Collect Route responses together, but Return the first bus first. 
+			//Collections.sort(results);
+			
+			locationText="At " +inputData.getStopName()+",";
+			textOutput=locationText;
+			speechOutput = AUDIO_SUCCESS + locationText+"<break time=\"0.1s\" />";
+			int when;
+			String routeID;
+			String lastRouteID=null;
+			for (int i = 0; i < results.size(); i++) {
+				
+				routeID=results.get(i).getRoute();
+				when = results.get(i).getEstimate();
+			
+				if (i==0){
+					textOutput += " The " + routeID + " will be arriving in " + when + " minutes ";
+					speechOutput += "The " + routeID + " will be arriving in " + when + " minutes ";
+				} else if (!routeID.equals(lastRouteID)){
+					textOutput += ".\n The " + routeID + " will be arriving in " + when + " minutes ";
+					speechOutput += "<break time=\"0.25s\" /> The " + routeID + " will be arriving in " + when + " minutes ";
+				} else {
+					textOutput += " and "+when+ " minutes ";
+					speechOutput += " and "+when+ " minutes ";
+				}
+				lastRouteID=routeID;
+			}
 			outputSpeech.setSsml("<speak> " + speechOutput + "</speak>");
 			analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "Success", textOutput, messages.size());
-			
+			return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput));
 		} catch (Exception e) {
 			analytics.postException(e.getMessage(), true);
 			e.printStackTrace();
 		}
+		return null;
+	}
+	
+	private SpeechletResponse buildResponse(PaInputData inputData) {
+		String speechOutput = "";
+		String textOutput = "";
+
 		
-		return SpeechletResponse.newTellResponse(outputSpeech, card);
+		List<Message> messages = new ArrayList<Message>();
+		messages = TrueTimeMessageParser.getPredictions(inputData.getRouteID(), inputData.getStopID());
+		log.info("getAnswer... with " + messages.size() + "messages");
+
+		try {
+			SsmlOutputSpeech outputSpeech = new SsmlOutputSpeech();
+			int when;
+			String locationOutput="The nearest stop to "+  inputData.getLocationName() +" is " + inputData.getStopName()+".";
+
+			//speechOutput="The nearest stop to "+  inputData.getLocationName() + " is " + inputData.getStopName()+".";
+
+			if (messages.size() == 0) {
+				log.info("No Messages");
+
+				textOutput = locationOutput+" No " + inputData.getDirection() + ", " + inputData.getRouteID() + " is expected at " + inputData.getStopName()
+				+ " in the next 30 minutes  ";
+				speechOutput = AUDIO_FAILURE + textOutput;
+				analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "No Result", textOutput, messages.size());
+				outputSpeech.setSsml("<speak> " + speechOutput + "</speak>");
+				return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput));
+			}
+			if ((messages.size() == 1) && (messages.get(0).getMessageType().equals(Message.ERROR))) {
+				log.error("1 error message:" + messages.get(0).getError());
+				textOutput = " No " + inputData.getDirection() + ", " + inputData.getRouteID() + " is expected at " + inputData.getStopName()
+				+ " in the next 30 minutes  ";
+				speechOutput = AUDIO_FAILURE + locationOutput+"<break time=\"0.1s\" />"+textOutput;
+				textOutput = locationOutput+textOutput;
+				speechOutput = AUDIO_FAILURE + textOutput;
+				analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "No Result", textOutput, messages.size());
+				outputSpeech.setSsml("<speak> " + speechOutput + "</speak>");
+				return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput));
+			}
+
+			for (int i = 0; i < messages.size(); i++) {
+				log.trace("Message[" + i + "]= " + messages.get(i).getMessageType());
+				when = messages.get(i).getEstimate();
+				if (i == 0) {
+					if (when < 3) {
+						textOutput = " An " + inputData.getDirection() + " " + inputData.getRouteID() + " is arriving at now ";
+						speechOutput = AUDIO_SUCCESS + locationOutput+ "<break time=\"0.1s\" /> An " + inputData.getDirection() + " " + inputData.getRouteID() + " is arriving <break time=\"0.1s\" /> now ";
+						textOutput= locationOutput + textOutput;
+					} else {
+						textOutput = " An " + inputData.getDirection() + " " + inputData.getRouteID() + " will be arriving in " + when + " minutes ";
+						speechOutput += AUDIO_SUCCESS + locationOutput+ "<break time=\"0.1s\" />"+ textOutput;
+						textOutput= locationOutput + textOutput;
+
+					}
+				} else {
+					textOutput = textOutput + " ... and in " + when + " minutes";
+					speechOutput = speechOutput + " <break time=\"0.25s\" /> and in " + when + " minutes";
+				}
+			}
+			String endText="<break time=\"0.25s\" />  to hear predictions for all routes that stop at "+inputData.getStopName() + "say Alexa, launch Pittsburgh Bus";
+			outputSpeech.setSsml("<speak> " + speechOutput + endText+"</speak>");
+			analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "Success", textOutput, messages.size());
+			return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput));
+		} catch (Exception e) {
+			analytics.postException(e.getMessage(), true);
+			e.printStackTrace();
+		}
+		return null;
+
+	}
+	
+	private SimpleCard buildCard(String s){
+		SimpleCard card=new SimpleCard();
+		card.setTitle("Pittsburgh Port Authority");
+		card.setContent(s);
+		return card;
 	}
 
 	private SpeechletResponse newAskResponse(Session session, String output, String reprompt) {
@@ -409,5 +477,31 @@ public class GetNextBusSpeechlet implements Speechlet {
 
 	}
 	
-
+	public class Result implements Comparable<Result>{
+		String route;
+		int estimate;
+		
+		Result (String route, int prediction){
+			this.route=route;
+			this.estimate=prediction;
+		}
+		
+		public int compareTo(Result r){
+			if (route.compareTo(r.route)>0)  return 1;
+			if (route.equalsIgnoreCase(r.route)){  
+				if (estimate>r.estimate) return 1;
+				if (estimate==r.estimate) return 0;
+			}
+			return -1;
+		}
+		
+		public String getRoute(){
+			return this.route;
+		}
+		
+		public int getEstimate(){
+			return this.estimate;
+		}
+	}
 }
+

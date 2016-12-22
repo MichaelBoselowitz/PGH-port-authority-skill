@@ -90,6 +90,7 @@ public class NearestStopLocator {
      */
     public static List<Stop> getStops(String routeID, String direction) throws IOException, JSONException{
     	log.info("getStops: routeId={}, direction={}", routeID, direction);
+    	//TODO: Move to TrueTimeMessageParser
     	String url =  "http://truetime.portauthority.org/bustime/api/v2/getstops?key=929FvbAPSEeyexCex5a7aDuus&rt="+routeID+"&dir="+direction.toUpperCase()+"&format=json";
        JSONObject stopsJSON = null;
        List<Stop> listOfStops = null;

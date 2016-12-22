@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 public class DirectionHelper extends DataHelper {
 	public static final String INTENT_NAME="DirectionBusIntent";
 	public static final String NAME = "Direction";
-	public static final String SPEECH ="Which direction are you <w role=\"ivona:NN\">traveling</w>, inbound or outbound ?";
+	public static final String SPEECH ="In which direction are you <w role=\"ivona:NN\">traveling</w>?";
 	
 	private static  Logger log = LoggerFactory.getLogger(DirectionHelper.class);
 
@@ -23,32 +23,42 @@ public class DirectionHelper extends DataHelper {
 	//private Intent intent;
 
 	public DirectionHelper(){
-		log.info("constructor");
+		log.trace("constructor");
 		//this.session=s;
 	}
 
 	public String putValuesInSession(Session session,Intent intent) throws InvalidInputException{
-		log.info("putValuesInSession"+intent.getName());
+		log.trace("putValuesInSession"+intent.getName());
 
 		String direction=getValueFromIntentSlot(intent);
 		if (direction!=null){
-			session.setAttribute(NAME, direction.toUpperCase());
+			session.setAttribute(NAME, translateDirection(direction));
 		} else {
-			log.error("stationName is null");
-			throw new InvalidInputException("StationName is null", "I didn't hear that."+SPEECH);
+			log.error("direction is null");
+			throw new InvalidInputException("Direction is null", "I didn't hear that."+SPEECH);
 		}
 		return "";
 	} 
+	
+	private static String translateDirection(String spoken){
+		if (spoken.equalsIgnoreCase("away")){
+			return "OUTBOUND";
+		} else if (spoken.equalsIgnoreCase("towards")){
+			return "INBOUND";
+		} else {
+			return spoken.toUpperCase();
+		}
+	}
 
 	@Override
 	public String getValueFromIntentSlot(Intent i){
-		log.info("getValuesFromIntentSlot:"+i.getName());
+		log.trace("getValuesFromIntentSlot:"+i.getName());
 		Slot slot = i.getSlot(NAME);
 		return (slot!=null) ? slot.getValue() : null;
 	}
 	
 	public String getValueFromSession(Session session){
-		log.info("getValuesFromSession");
+		log.trace("getValuesFromSession");
 		if (session.getAttributes().containsKey(NAME)) {
 			return (String) session.getAttribute(NAME);
 		} else {
