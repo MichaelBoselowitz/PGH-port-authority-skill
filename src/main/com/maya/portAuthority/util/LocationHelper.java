@@ -33,31 +33,45 @@ public class LocationHelper extends DataHelper {
 		//this.session=s;
 	}
 
+	/**
+	 * The location held in the intent's slot might contain an address or a landmark or business name. 
+	 * Here we call the Google Maps API to translate that to a street address and put it in session. 
+	 */
 	public String putValuesInSession(Session session, Intent intent) throws InvalidInputException {
 		log.trace("putValuesInSession" + intent.getName());
-		try {
-			String location = getValueFromIntentSlot(intent);
-			if (location != null) {
-				log.debug("putting value in session Slot Location:" + location);
-				session.setAttribute(NAME, location.toUpperCase());
-				Coordinates c = NearestStopLocator.getSourceLocation(location);
-				String streetAddress = simplifyAddress(c.getAddress());
-				session.setAttribute("lat", c.getLat());
-				session.setAttribute("long", c.getLng());
-				session.setAttribute("address", streetAddress);
-				if (!location.equalsIgnoreCase(streetAddress)){
-					return "I found "+location+" at "+streetAddress+".";
-				} else {
-					return "";
-				}
-			} else {
-				log.error("location is null");
-				throw new InvalidInputException("No Location in Intent", "Please repeat your location." + SPEECH);
+		String location = getValueFromIntentSlot(intent);
+		
+		//Handle Null Location
+		if (location == null){
+			if (intent.getName().equals("OneShotBusIntent")) {
+				//For OneShotBusIntent, this is an acceptable condition. 
+				log.info("Intent:"+intent.getName()+" location is null");
+				return "";
+			} else{
+				log.info("Intent:"+intent.getName()+" location is null");
+				throw new InvalidInputException("No Location in Intent", "Please repeat your location. " + SPEECH);
 			}
+		}
+		
+		//Find address for location 
+		try {
+			log.debug("putting value in session Slot Location:" + location);
+			session.setAttribute(NAME, location.toUpperCase());
+			Coordinates c = NearestStopLocator.getSourceLocation(location);
+			String streetAddress = simplifyAddress(c.getAddress());
+			session.setAttribute("lat", c.getLat());
+			session.setAttribute("long", c.getLng());
+			session.setAttribute("address", streetAddress);
+			if (!location.equalsIgnoreCase(streetAddress)){
+				return "I found "+location+" at "+streetAddress+".";
+			} else {
+				return "";
+			}
+
 		} catch (JSONException jsonE) {
-			throw new InvalidInputException("No Location in Intent", jsonE, "Please repeat your location." + SPEECH);
+			throw new InvalidInputException("No Location in Intent", jsonE, "Please repeat your location. " + SPEECH);
 		} catch (IOException ioE) {
-			throw new InvalidInputException("Cannot reach Google Maps ", ioE, "Please repeat your location." + SPEECH);
+			throw new InvalidInputException("Cannot reach Google Maps ", ioE, "Please repeat your location. " + SPEECH);
 		}
 	}
 	

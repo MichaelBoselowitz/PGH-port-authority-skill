@@ -1,49 +1,54 @@
 {
-  "intents": [
-    {
-      "intent": "OneshotBusIntent",
-      "slots": [
-        {
-          "name": "Location",
-          "type":  "AMAZON.StreetAddress"
-        },
-        {
-          "name": "Direction",
-          "type": "LIST_OF_DIRECTIONS"
-        },
-        {
-          "name": "Route",
-          "type": "LIST_OF_BUS_ROUTES"
-        }
-      ]
-    },
-    {
-      "intent": "DirectionBusIntent",
-      "slots": [
-        {
-          "name": "Direction",
-          "type": "LIST_OF_DIRECTIONS"
-        }
-      ]
-    },
-     {
-      "intent": "RouteBusIntent",
-      "slots": [
-        {
-          "name": "Route",
-          "type": "LIST_OF_BUS_ROUTES"
-        }
-      ]
-    },
- 
- {
-      "intent": "LocationBusIntent",
-      "slots": [
-        {
-          "name": "Location",
-          "type":  "AMAZON.StreetAddress"
-        }
-      ]
-    }
- 
-  ]}
+	"intents": [
+		{
+			"intent": "OneshotBusIntent",
+			"slots": [
+				{
+					"name": "Location",
+					"type": "AMAZON.StreetAddress"
+				},
+				{
+					"name": "Direction",
+					"type": "LIST_OF_DIRECTIONS"
+				},
+				{
+					"name": "Route",
+					"type": "LIST_OF_BUS_ROUTES"
+				}
+			]
+		},
+		{
+			"intent": "DirectionBusIntent",
+			"slots": [
+				{
+					"name": "Direction",
+					"type": "LIST_OF_DIRECTIONS"
+				}
+			]
+		},
+		{
+			"intent": "RouteBusIntent",
+			"slots": [
+				{
+					"name": "Route",
+					"type": "LIST_OF_BUS_ROUTES"
+				}
+			]
+		},
+		{
+			"intent": "LocationBusIntent",
+			"slots": [
+				{
+					"name": "Location",
+					"type": "AMAZON.StreetAddress"
+				}
+			]
+		},
+		{
+			"intent": "ResetBusIntent"
+		},
+		{
+			"intent": "AllBusRoutesIntent"
+		}
+	]
+}

@@ -16,6 +16,12 @@ public class PaDao {
         this.dynamoDbClient = dynamoDbClient;
     }
 
+    public void deletePaInput(Session session){
+    	PaUserDataItem item = new PaUserDataItem();
+        item.setCustomerId(session.getUser().getUserId());
+        dynamoDbClient.deleteItem(item);
+    }
+    
     /**
      * Reads and returns the user information from the session.
      * <p>

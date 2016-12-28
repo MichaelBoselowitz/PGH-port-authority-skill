@@ -1,3 +1,9 @@
+AllBusRoutesIntent all bus routes
+AllBusRoutesIntent all bus routes for this stop
+AllBusRoutesIntent all bus routes for this station
+
+ResetBusIntent reset history
+
 OneshotBusIntent when is 
 OneshotBusIntent when is the next bus
 OneshotBusIntent bus information
