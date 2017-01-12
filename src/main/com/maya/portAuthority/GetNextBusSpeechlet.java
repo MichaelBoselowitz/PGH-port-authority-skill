@@ -1,5 +1,6 @@
 package com.maya.portAuthority;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -8,9 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.BasicConfigurator;
+import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,59 +41,36 @@ import com.maya.portAuthority.googleMaps.*;
 
 public class GetNextBusSpeechlet implements Speechlet {
 
-
-
 	private static Logger log = LoggerFactory.getLogger(GetNextBusSpeechlet.class);
 
+	public static final String INVOCATION_NAME = "Steel City Transit";
 
-//	private static String SPEECH_INSTRUCTIONS = "I can lead you through providing a bus line, direction, and "
-//			+ "bus stop to get departure information, "
-//			+ "or you can simply open Port Authroity and ask a question like, "
-//			+ "when is the next outbound P1 leaving sixth and smithfield. ";
+	private SkillContext skillContext;
 
-	private static String SPEECH_WELCOME = "Welcome to Pittsburgh Port Authority ";
-
-	private static String AUDIO_WELCOME = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_welcome.mp3\" />";
-	private static String AUDIO_FAILURE = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_failure.mp3\" />";
-	private static String AUDIO_SUCCESS = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_success.mp3\" />";
-	
-	private static final String INVOCATION_NAME = "Steel City Transit";
-	
-	//private SkillContext skillContext;
-
-	private Map<String, DataHelper> dataHelpers;
-	
 	private AmazonDynamoDBClient amazonDynamoDBClient;
 	private PaDynamoDbClient dynamoDbClient;
 	private PaDao inputDao;
-	
-	AnalyticsManager analytics;
 
-
+	private AnalyticsManager analytics;
 
 	/** PUBLIC METHODS ******************************/
 	/**
-	 * called when the skill is first requested and no intent is provided
+	 * called when the skill is first requested and no intent is provided return
 	 */
 	public SpeechletResponse onLaunch(LaunchRequest request, Session session) throws SpeechletException {
 		BasicConfigurator.configure();
 		log.info("onLaunch requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
-		//skillContext = new SkillContext();
+		// TODO: Pull the Skill Context out of history, too.
+		PaInput storedInput = this.getPaDao().getPaInput(session);
 
-		if (amazonDynamoDBClient == null) {
-			amazonDynamoDBClient = new AmazonDynamoDBClient();
-
-		}
-
-		dynamoDbClient = new PaDynamoDbClient(amazonDynamoDBClient);
-		inputDao = new PaDao(dynamoDbClient);
-		PaInput input = inputDao.getPaInput(session);
-		if ((input != null) && input.hasAllData()){
+		if ((storedInput != null) && storedInput.hasAllData()) {
 			analytics.postEvent(AnalyticsManager.CATEGORY_LAUNCH, "Return Saved");
-			return buildResponse(input.getData());
+			skillContext.setNeedsLocation(false);
+			List<Message> predictions = getPredictions(storedInput.getData());
+			return buildResponse(storedInput.getData(), predictions);
 		} else {
 			analytics.postEvent(AnalyticsManager.CATEGORY_LAUNCH, "Welcome");
-			return newAskResponse(AUDIO_WELCOME + SPEECH_WELCOME + RouteHelper.SPEECH, RouteHelper.SPEECH);
+			return OutputHelper.getWelcome();
 		}
 	}
 
@@ -102,323 +80,228 @@ public class GetNextBusSpeechlet implements Speechlet {
 	 */
 	public void onSessionStarted(SessionStartedRequest request, Session session) throws SpeechletException {
 		log.info("onSessionStarted requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
-		
+
 		analytics = new AnalyticsManager();
 		analytics.setUserId(session.getUser().getUserId());
 		analytics.postSessionEvent(AnalyticsManager.ACTION_SESSION_START);
-		
-		// TODO: Not a HASHMAP
-		this.dataHelpers = new HashMap<String, DataHelper>();// createDataHelpers(session);
-		dataHelpers.put(RouteHelper.INTENT_NAME, DataHelperFactory.getHelper(RouteHelper.NAME));
-		dataHelpers.put(LocationHelper.INTENT_NAME, DataHelperFactory.getHelper(LocationHelper.NAME));
-		dataHelpers.put(DirectionHelper.INTENT_NAME, DataHelperFactory.getHelper(DirectionHelper.NAME));
+
+		skillContext = new SkillContext();
 	}
 
 	/**
 	 * Called when the user invokes an intent.
 	 */
 	public SpeechletResponse onIntent(IntentRequest request, Session session) throws SpeechletException {
-	    log.info("onIntent intent={}, requestId={}, sessionId={}", request.getIntent().getName(), request.getRequestId(), session.getSessionId());
-	 	String feedbackText = "";
+		log.info("onIntent intent={}, requestId={}, sessionId={}", request.getIntent().getName(),
+				request.getRequestId(), session.getSessionId());
+		String feedbackText = "";
 		try {
 			Intent intent = request.getIntent();
 			analytics.postEvent(AnalyticsManager.CATEGORY_INTENT, intent.getName());
-			if (intent.getName().equals("ResetBusIntent")){
-				log.info("Intent equals ResetBusIntent");
+
+			switch (intent.getName()) {
+
+			case DataHelper.RESET_INTENT_NAME:
+				// Delete current record for this user
 				this.getPaDao().deletePaInput(session);
-				//clear data from DB;
+
+				// Notify the user of success
 				PlainTextOutputSpeech outputSpeech = new PlainTextOutputSpeech();
 				outputSpeech.setText("Reset History");
 				return SpeechletResponse.newTellResponse(outputSpeech);
-			}
-			if (intent.getName().equals("AllBusRoutesIntent")){
-				log.info("Intent equals AllBusRoutesIntent");
+
+			case DataHelper.ALL_ROUTES_INTENT_NAME:
+				// try to retrieve current record for this user
 				PaInput input = getPaDao().getPaInput(session);
-				if ((input != null) && input.hasAllData()){
+
+				if ((input != null) && input.hasAllData()) { // if record found
+																// and the all
+																// necessary
+																// data was
+																// found therein
 					analytics.postEvent(AnalyticsManager.CATEGORY_LAUNCH, "Return Saved");
-					return buildAllRoutesResponse(input.getData());
-				} else {
+
+					// get predictions for all routes for this stop
+					skillContext.setAllRoutes(true);
+					skillContext.setNeedsLocation(false);
+					// TODO: Make this part of the normal conversation
+					List<Message> predictions = getPredictions(input.getData());
+					return buildResponse(input.getData(), predictions);
+
+				} else { // if there is not enough information retrieved
+							// continue with conversation
 					log.debug("AllRoutesIntent was unable to retreive all saved data");
 				}
-			} else if (intent.getName().equals("OneshotBusIntent")){
-				log.info("Intent equals OneshotBusIntent");
-				Iterator<DataHelper> itr = dataHelpers.values().iterator();
-				while (itr.hasNext()){
-					DataHelper dataHelper=itr.next();
-					feedbackText+=dataHelper.putValuesInSession(session,intent);
-				}
+				break;
 
-			} else { //DirectionBusIntent {Direction} || RouteBusIntent {Route} || StationBusIntent {StationName}
-				log.info("Intent equals something else");
-				DataHelper dataHelper = dataHelpers.get(intent.getName());
-				feedbackText=dataHelper.putValuesInSession(session,intent);
+			case DataHelper.ONE_SHOT_INTENT_NAME:
+				// collect all the information provided by the user
+				feedbackText = DataHelper.putRouteValuesInSession(session, intent);
+				feedbackText += DataHelper.putLocationValuesInSession(session, intent);
+				feedbackText += DataHelper.putDirectionValuesInSession(session, intent);
+				break;
+
+			case DataHelper.DIRECTION_INTENT_NAME:
+				// collect the direction information
+				feedbackText = DataHelper.putDirectionValuesInSession(session, intent);
+				break;
+
+			case DataHelper.LOCATION_INTENT_NAME:
+				// collect the location information
+				feedbackText = DataHelper.putLocationValuesInSession(session, intent);
+				break;
+
+			case DataHelper.ROUTE_INTENT_NAME:
+				// collect the route information
+				feedbackText = DataHelper.putRouteValuesInSession(session, intent);
+				break;
+
+			default:
+				log.error("Cannot Handle Intent:" + intent.getName());
 			}
+
 		} catch (InvalidInputException e) {
 			analytics.postException(e.getMessage(), false);
-			return newAskResponse(session, e.getSpeech(), e.getSpeech()); 
+			return OutputHelper.newAskResponse(e.getSpeech(), e.getSpeech());
 		}
 
-		
+		// if we don't have everything we need to create predictions, continue
+		// the conversation
 		SpeechletResponse furtherQuestions;
-		if ((furtherQuestions=checkForAdditionalQuestions(session, feedbackText))!=null){
+		if ((furtherQuestions = checkForAdditionalQuestions(session, feedbackText)) != null) {
 			return furtherQuestions;
 		} else if (log.isInfoEnabled()) {
 			logSession(session, "Returning response for:");
 		}
+
 		// OK, the user has entered everything, save their entries
-		analytics.postEvent(AnalyticsManager.CATEGORY_INTENT, "Collected all input" );
-		
+		analytics.postEvent(AnalyticsManager.CATEGORY_INTENT, "Collected all input");
+
+		// TODO: use input data from the get go.
+		PaInputData inputData = makeFromSession(session);
 		try {
-			
-			//TODO: Make Session Data be a PaInput
-			//Map<String,String> sessionData= getInputValuesFromSession();
-			Map<String,Object> sessionData= session.getAttributes();
-			PaInputData inputData=PaInputData.newInstance();
-			inputData.setDirection(sessionData.get(DirectionHelper.NAME).toString());
-			inputData.setRouteID(sessionData.get(RouteHelper.NAME).toString());
-			inputData.setRouteName(sessionData.get(RouteHelper.ROUTE_NAME).toString());
-			inputData.setLocationName(sessionData.get(LocationHelper.NAME).toString());
-			inputData.setLocationAddress(sessionData.get("address").toString());
-			inputData.setLocationLat(sessionData.get("lat").toString());
-			inputData.setLocationLong(sessionData.get("long").toString());
-
-			Coordinates c=new Coordinates();
-			c.setAddress(inputData.getLocationAddress() );
-			c.setLat(new Double(inputData.getLocationLat()).doubleValue() );
-			c.setLng(new Double(inputData.getLocationLong()).doubleValue() );
-
-			Stop nearestStop=NearestStopLocator.process(c, inputData.getRouteID(),inputData.getDirection());
-			inputData.setStop(nearestStop);
-
-			saveInputToDB(PaInput.newInstance(session, inputData));
-
-			// get speech response for all stops
-			return buildResponse(inputData);
-			
-		} catch (Exception e) {
-			//TODO: Handle this excpetion appropriately. 
+			if (inputData.getStopID() == null) {
+				skillContext.setNeedsLocation(true);
+				inputData.setStop(getNearestStop(inputData));
+			} else {
+				skillContext.setNeedsLocation(false);
+			}
+		} catch (InvalidInputException | IOException | JSONException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
-			analytics.postException(e.getMessage(), false);
-			return newAskResponse(session, e.getMessage(), e.getMessage()); 
+		} finally {
+			saveInputToDB(PaInput.newInstance(session, inputData));
 		}
-	}
-	
 
-		
+		List<Message> predictions = getPredictions(inputData);
+		// get speech response
+		return buildResponse(inputData, predictions);
+
+	}
 
 	public void onSessionEnded(SessionEndedRequest request, Session session) throws SpeechletException {
 		log.info("onSessionEnded requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
-		this.dataHelpers.clear();
 		analytics.postSessionEvent(AnalyticsManager.ACTION_SESSION_END);
 	}
 
-	//////////////////////////////PRIVATE METHODS////////////////////////////
+	////////////////////////////// PRIVATE METHODS////////////////////////////
 	private SpeechletResponse checkForAdditionalQuestions(Session session) {
 		return checkForAdditionalQuestions(session, "");
 	}
-	
+
 	private SpeechletResponse checkForAdditionalQuestions(Session session, String feedbackText) {
 		if (log.isDebugEnabled()) {
-			logSession(session, "checkingForAdditionalQuestions: feedbackText={}"+feedbackText);
+			logSession(session, "checkingForAdditionalQuestions: feedbackText={}" + feedbackText);
 		}
-		// Do I have all the data I need?
-		Iterator<DataHelper> itr = dataHelpers.values().iterator();
-		while (itr.hasNext()) {
-			DataHelper element = itr.next();
-
-			if (element.getValueFromSession(session) == null) {
-				log.trace(element.getName() + ":" + element.getValueFromSession(session) + "==null");
-				return newAskResponse(session, feedbackText+","+element.getSpeech(), element.getSpeech());
-			} else {
-				log.trace(element.getName() + ":" + element.getValueFromSession(session) + "!=null");
-			}
+		// Need Route, Location, and Direction
+		if (DataHelper.getValueFromSession(session, DataHelper.ROUTE_ID) == null) {
+			return OutputHelper.newAskResponse(feedbackText + "," + DataHelper.ROUTE_PROMPT, DataHelper.ROUTE_PROMPT);
+		}
+		if (DataHelper.getValueFromSession(session, DataHelper.LOCATION) == null) {
+			return OutputHelper.newAskResponse( feedbackText + "," + DataHelper.LOCATION_PROMPT, DataHelper.LOCATION_PROMPT);
+		}
+		if (DataHelper.getValueFromSession(session, DataHelper.DIRECTION) == null) {
+			return OutputHelper.newAskResponse( feedbackText + "," + DataHelper.DIRECTION_PROMPT,
+					DataHelper.DIRECTION_PROMPT);
 		}
 
 		return null;
 	}
 
+	private PaInputData makeFromSession(Session session) {
+		// TODO: Make Session Data be a PaInput
+		// Map<String,String> sessionData= getInputValuesFromSession();
+		Map<String, Object> sessionData = session.getAttributes();
+		PaInputData inputData = PaInputData.newInstance();
+		inputData.setDirection(sessionData.get(DataHelper.DIRECTION).toString());
+		inputData.setRouteID(sessionData.get(DataHelper.ROUTE_ID).toString());
+		inputData.setRouteName(sessionData.get(DataHelper.ROUTE_NAME).toString());
+		inputData.setLocationName(sessionData.get(DataHelper.LOCATION).toString());
+		inputData.setLocationAddress(sessionData.get(DataHelper.ADDRESS).toString());
+		inputData.setLocationLat(sessionData.get(DataHelper.LAT).toString());
+		inputData.setLocationLong(sessionData.get(DataHelper.LONG).toString());
+		return inputData;
+	}
 
-	private SpeechletResponse buildAllRoutesResponse(PaInputData inputData) {
-		String speechOutput = "";
-		String textOutput = "";
-		String locationText;
-		SsmlOutputSpeech outputSpeech = new SsmlOutputSpeech();
-		
-		try{
-			List<Message> messages = new ArrayList<Message>();
+	private Stop getNearestStop(PaInputData inputData) throws InvalidInputException, IOException, JSONException {
+		Coordinates c = new Coordinates();
+		c.setAddress(inputData.getLocationAddress());
+		c.setLat(new Double(inputData.getLocationLat()).doubleValue());
+		c.setLng(new Double(inputData.getLocationLong()).doubleValue());
+
+		return NearestStopLocator.process(c, inputData.getRouteID(), inputData.getDirection());
+	}
+
+	private List<Message> getPredictions(PaInputData inputData) {
+		List<Message> messages = new ArrayList<Message>();
+		if (skillContext.isAllRoutes()) {
 			messages = TrueTimeAPI.getPredictions(inputData.getStopID());
+		} else {
+			messages = TrueTimeAPI.getPredictions(inputData.getRouteID(), inputData.getStopID());
+		}
+		return messages;
+	}
 
+	private SpeechletResponse buildResponse(PaInputData inputData, List<Message> messages) {
+		SpeechletResponse output;
+		try {
 			if (messages.size() == 0) {
 				log.info("No Messages");
-
-				textOutput = " No " + inputData.getDirection() + ", busses are expected at " + inputData.getStopName()
-				+ " in the next 30 minutes  ";
-				speechOutput = AUDIO_FAILURE + textOutput;
-				analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "No Result", textOutput, messages.size());
-				outputSpeech.setSsml("<speak> " + speechOutput + "</speak>");
-				return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput));
+				output = OutputHelper.getNoResponse(inputData, skillContext);
+				analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "No Result", "Null", messages.size());
+				return output;
 			}
-			
+
 			if ((messages.size() == 1) && (messages.get(0).getMessageType().equals(Message.ERROR))) {
 				log.error("1 error message:" + messages.get(0).getError());
-				textOutput = " No " + inputData.getDirection() + ", busses are expected at " + inputData.getStopName()
-				+ " in the next 30 minutes  ";
-				speechOutput = AUDIO_FAILURE +textOutput;
-				analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "No Result", textOutput, messages.size());
-				outputSpeech.setSsml("<speak> " + speechOutput + "</speak>");
-				return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput));
+				analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "No Result", messages.get(0).getError(),
+						messages.size());
+				return OutputHelper.getNoResponse(inputData, skillContext);
 
-			} 
-			ArrayList<Result> results=new ArrayList<Result>();
-			for (int i = 0; i < messages.size(); i++) {				
+			}
+
+			ArrayList<Result> results = new ArrayList<Result>();
+			for (int i = 0; i < messages.size(); i++) {
 				results.add(new Result(messages.get(i).getRouteID(), messages.get(i).getEstimate()));
 			}
-			//TODO: Collect Route responses together, but Return the first bus first. 
-			Collections.sort(results);
 			
-			locationText="At " +inputData.getStopName()+",";
-			textOutput=locationText;
-			speechOutput = AUDIO_SUCCESS + locationText+"<break time=\"0.1s\" />";
-			int when;
-			String routeID;
-			String lastRouteID=null;
-			for (int i = 0; i < results.size(); i++) {
-				
-				routeID=results.get(i).getRoute();
-				when = results.get(i).getEstimate();
-			
-				if (i==0){
-					textOutput += " The " + routeID + " will be arriving in " + when + " minutes ";
-					speechOutput += "The " + routeID + " will be arriving in " + when + " minutes ";
-				} else if (!routeID.equals(lastRouteID)){
-					textOutput += ".\n The " + routeID + " will be arriving in " + when + " minutes ";
-					speechOutput += "<break time=\"0.25s\" /> The " + routeID + " will be arriving in " + when + " minutes ";
-				} else {
-					textOutput += " and "+when+ " minutes ";
-					speechOutput += " and "+when+ " minutes ";
-				}
-				lastRouteID=routeID;
+			if (skillContext.isAllRoutes()) {
+				analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "Success",
+						"All routes at " + inputData.getStopName(), messages.size());
+			} else {
+				analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "Success",
+						inputData.getRouteName() + " at " + inputData.getStopName(), messages.size());
 			}
-			outputSpeech.setSsml("<speak> " + speechOutput + "</speak>");
-			analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "Success", textOutput, messages.size());
-			return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput));
+			
+			return OutputHelper.getResponse(inputData, results, skillContext);
+
 		} catch (Exception e) {
 			analytics.postException(e.getMessage(), true);
 			e.printStackTrace();
 		}
 		return null;
 	}
-	
-	private SpeechletResponse buildResponse(PaInputData inputData) {
-		String speechOutput = "";
-		String textOutput = "";
 
-		
-		List<Message> messages = new ArrayList<Message>();
-		messages = TrueTimeAPI.getPredictions(inputData.getRouteID(), inputData.getStopID());
-		log.info("getAnswer... with " + messages.size() + "messages");
-
-		try {
-			SsmlOutputSpeech outputSpeech = new SsmlOutputSpeech();
-			int when;
-			String locationOutput="The nearest stop to "+  inputData.getLocationName() +" is " + inputData.getStopName()+".";
-
-			//speechOutput="The nearest stop to "+  inputData.getLocationName() + " is " + inputData.getStopName()+".";
-
-			if (messages.size() == 0) {
-				log.info("No Messages");
-
-				textOutput = locationOutput+" No " + inputData.getDirection() + ", " + inputData.getRouteID() + " is expected at " + inputData.getStopName()
-				+ " in the next 30 minutes  ";
-				speechOutput = AUDIO_FAILURE + textOutput;
-				analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "No Result", textOutput, messages.size());
-				String endText="<break time=\"0.25s\" />  to hear predictions for all routes that stop there, say <break time=\"0.25s\" /> Alexa, ask "+INVOCATION_NAME+" for All Routes";
-				outputSpeech.setSsml("<speak> " + speechOutput + endText+"</speak>");
-				return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput));
-			}
-			if ((messages.size() == 1) && (messages.get(0).getMessageType().equals(Message.ERROR))) {
-				log.error("1 error message:" + messages.get(0).getError());
-				textOutput = " No " + inputData.getDirection() + ", " + inputData.getRouteID() + " is expected at " + inputData.getStopName()
-				+ " in the next 30 minutes  ";
-				speechOutput = AUDIO_FAILURE + locationOutput+"<break time=\"0.1s\" />"+textOutput;
-				textOutput = locationOutput+textOutput;
-				speechOutput = AUDIO_FAILURE + textOutput;
-				analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "No Result", textOutput, messages.size());
-				String endText="<break time=\"0.25s\" />  to hear predictions for all routes that stop there, say <break time=\"0.25s\" /> Alexa, ask "+INVOCATION_NAME+" for All Routes";
-				outputSpeech.setSsml("<speak> " + speechOutput + endText+"</speak>");
-				return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput));
-			}
-
-			for (int i = 0; i < messages.size(); i++) {
-				log.trace("Message[" + i + "]= " + messages.get(i).getMessageType());
-				when = messages.get(i).getEstimate();
-				if (i == 0) {
-					if (when < 3) {
-						textOutput = " An " + inputData.getDirection() + " " + inputData.getRouteID() + " is arriving at now ";
-						speechOutput = AUDIO_SUCCESS + locationOutput+ "<break time=\"0.1s\" /> An " + inputData.getDirection() + " " + inputData.getRouteID() + " is arriving <break time=\"0.1s\" /> now ";
-						textOutput= locationOutput + textOutput;
-					} else {
-						textOutput = " An " + inputData.getDirection() + " " + inputData.getRouteID() + " will be arriving in " + when + " minutes ";
-						speechOutput += AUDIO_SUCCESS + locationOutput+ "<break time=\"0.1s\" />"+ textOutput;
-						textOutput= locationOutput + textOutput;
-
-					}
-				} else {
-					textOutput = textOutput + " ... and in " + when + " minutes";
-					speechOutput = speechOutput + " <break time=\"0.25s\" /> and in " + when + " minutes";
-				}
-			}
-			String endText="<break time=\"0.25s\" />  to hear predictions for all routes that stop there, say <break time=\"0.25s\" /> Alexa, ask "+INVOCATION_NAME+" for All Routes";
-			outputSpeech.setSsml("<speak> " + speechOutput + endText+"</speak>");
-			analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "Success", textOutput, messages.size());
-			return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput));
-		} catch (Exception e) {
-			analytics.postException(e.getMessage(), true);
-			e.printStackTrace();
-		}
-		return null;
-
-	}
-	
-	private SimpleCard buildCard(String s){
-		SimpleCard card=new SimpleCard();
-		card.setTitle("Pittsburgh Port Authority");
-		card.setContent(s);
-		return card;
-	}
-
-	private SpeechletResponse newAskResponse(Session session, String output, String reprompt) {
-		if (log.isTraceEnabled()) {
-			this.logSession(session, "newAskResponse");
-		}
-		return newAskResponse(output, reprompt);
-	}
-
-	/**
-	 * Wrapper for creating the Ask response from the input strings.
-	 * 
-	 * @param stringOutput
-	 *            the output to be spoken
-	 * @param repromptText
-	 *            the reprompt for if the user doesn't reply or is
-	 *            misunderstood.
-	 * @return SpeechletResponse the speechlet response
-	 */
-	private SpeechletResponse newAskResponse(String stringOutput, String repromptText) {
-		// PlainTextOutputSpeech outputSpeech = new PlainTextOutputSpeech();
-		// outputSpeech.setText(stringOutput);
-		SsmlOutputSpeech outputSpeech = new SsmlOutputSpeech();
-		outputSpeech.setSsml("<speak> " + stringOutput + " </speak>");
-
-		PlainTextOutputSpeech repromptOutputSpeech = new PlainTextOutputSpeech();
-		repromptOutputSpeech.setText(repromptText);
-		// SsmlOutputSpeech repromptOutputSpeech = new SsmlOutputSpeech();
-		// repromptOutputSpeech.setSsml(repromptText);
-
-		Reprompt reprompt = new Reprompt();
-		reprompt.setOutputSpeech(repromptOutputSpeech);
-		return SpeechletResponse.newAskResponse(outputSpeech, reprompt);
-	}
 
 	/**
 	 * Helper method to log the data currently stored in session.
@@ -427,19 +310,12 @@ public class GetNextBusSpeechlet implements Speechlet {
 	 * @param intro
 	 */
 	private void logSession(Session session, String intro) {
-//		Iterator<DataHelper> itr = dataHelpers.values().iterator();
-//		while (itr.hasNext()) {
-//			DataHelper element = itr.next();
-//			log.info(intro + "Session:" + element.getName() + ":" + element.getValueFromSession());
-//		}
-//		log.info(intro+"Session:address:"+session.getAttribute("address") );
-//		log.info(session.toString());
-		Map <String, Object> attributes=session.getAttributes();
-		Set<String> set= attributes.keySet();
-		Iterator<String> itr=set.iterator();
+		Map<String, Object> attributes = session.getAttributes();
+		Set<String> set = attributes.keySet();
+		Iterator<String> itr = set.iterator();
 		while (itr.hasNext()) {
-			String element=itr.next();
-			log.info(intro + "Session:" + element+ ":" + session.getAttribute(element));
+			String element = itr.next();
+			log.info(intro + "Session:" + element + ":" + session.getAttribute(element));
 		}
 	}
 
@@ -492,63 +368,47 @@ public class GetNextBusSpeechlet implements Speechlet {
 		log.debug("replaceNumWithOrdinalWord returning:" + returnValue);
 		return returnValue;
 	}
-	
 
-		
-	private void saveInputToDB(PaInput input){
-		if (amazonDynamoDBClient == null) {amazonDynamoDBClient = new AmazonDynamoDBClient();}
-		if (dynamoDbClient == null) { dynamoDbClient = new PaDynamoDbClient(amazonDynamoDBClient);}
-		if (inputDao==null) {inputDao = new PaDao(dynamoDbClient);}
-		inputDao.savePaInput(input);
-
+	private SpeechletResponse handleFatalExcpetion(Session s, Exception e) {
+		e.printStackTrace();
+		analytics.postException(e.getMessage(), true);
+		return OutputHelper.newTellResponse(e.getMessage());
 	}
-	
-	private AmazonDynamoDBClient getAmazonDynamoDBClient(){
-		if (this.amazonDynamoDBClient == null) { 
-			this.amazonDynamoDBClient = new AmazonDynamoDBClient(); 
+
+	private SpeechletResponse handleExcpetion(Session s, Exception e, boolean fatal) {
+		if (fatal) {
+			return handleFatalExcpetion(s, e);
+		} else {
+			e.printStackTrace();
+			analytics.postException(e.getMessage(), false);
+			return OutputHelper.newAskResponse(e.getMessage(), e.getMessage());
+		}
+	}
+
+	private AmazonDynamoDBClient getAmazonDynamoDBClient() {
+		if (this.amazonDynamoDBClient == null) {
+			this.amazonDynamoDBClient = new AmazonDynamoDBClient();
 		}
 		return this.amazonDynamoDBClient;
 	}
-	
-	private PaDynamoDbClient getPaDynamoDbClient(){
-		if (this.dynamoDbClient == null) { 
+
+	private PaDynamoDbClient getPaDynamoDbClient() {
+		if (this.dynamoDbClient == null) {
 			this.dynamoDbClient = new PaDynamoDbClient(getAmazonDynamoDBClient());
 		}
 		return this.dynamoDbClient;
 	}
-	
-	private PaDao getPaDao(){
+
+	private PaDao getPaDao() {
 		if (this.inputDao == null) {
 			this.inputDao = new PaDao(getPaDynamoDbClient());
 		}
 		return this.inputDao;
 	}
-	
-	public class Result implements Comparable<Result>{
-		String route;
-		int estimate;
-		
-		Result (String route, int prediction){
-			this.route=route;
-			this.estimate=prediction;
-		}
-		
-		public int compareTo(Result r){
-			if (route.compareTo(r.route)>0)  return 1;
-			if (route.equalsIgnoreCase(r.route)){  
-				if (estimate>r.estimate) return 1;
-				if (estimate==r.estimate) return 0;
-			}
-			return -1;
-		}
-		
-		public String getRoute(){
-			return this.route;
-		}
-		
-		public int getEstimate(){
-			return this.estimate;
-		}
-	}
-}
 
+	private void saveInputToDB(PaInput input) {
+		getPaDao().savePaInput(input);
+
+	}
+
+}
