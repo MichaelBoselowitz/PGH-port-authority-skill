@@ -43,7 +43,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 
 	private static Logger log = LoggerFactory.getLogger(GetNextBusSpeechlet.class);
 
-	public static final String INVOCATION_NAME = "Steel City Transit";
+	public static final String INVOCATION_NAME = "Steel Transit";
 
 	private SkillContext skillContext;
 
