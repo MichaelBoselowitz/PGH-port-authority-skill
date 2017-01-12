@@ -13,8 +13,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Model representing an item of the PaUserData table in DynamoDB for the ScoreKeeper
- * skill.
+ * Model representing an item of the PaUserData table in DynamoDB 
  */
 @DynamoDBTable(tableName = "PPAAS_User_Data")
 public class PaUserDataItem {

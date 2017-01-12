@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.amazon.speech.speechlet.Session;
-import com.maya.portAuthority.GetNextBusSpeechlet;
 
 /**
  * Contains the methods to interact with the persistence layer for Port Authority in DynamoDB.
@@ -17,6 +16,12 @@ public class PaDao {
         this.dynamoDbClient = dynamoDbClient;
     }
 
+    public void deletePaInput(Session session){
+    	PaUserDataItem item = new PaUserDataItem();
+        item.setCustomerId(session.getUser().getUserId());
+        dynamoDbClient.deleteItem(item);
+    }
+    
     /**
      * Reads and returns the user information from the session.
      * <p>

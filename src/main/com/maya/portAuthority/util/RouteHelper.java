@@ -5,12 +5,10 @@ import com.amazon.speech.slu.Slot;
 import com.amazon.speech.speechlet.Session;
 import com.maya.portAuthority.InvalidInputException;
 import com.maya.portAuthority.api.Message;
-import com.maya.portAuthority.api.TrueTimeMessageParser;
+import com.maya.portAuthority.api.TrueTimeAPI;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,12 +24,8 @@ public class RouteHelper extends DataHelper {
 
 	private static Logger log = LoggerFactory.getLogger(RouteHelper.class);
 	
-	//private Intent intent;
-	//private Session session;
-
 	public RouteHelper(){
 		log.trace("constructor");
-		//this.session=s;
 	}
 
 	public String putValuesInSession(Session session, Intent intent) throws InvalidInputException {
@@ -87,7 +81,7 @@ public class RouteHelper extends DataHelper {
 	}
 	
 	private Message getMatchedRoute(String routeID){
-		List<Message> routes = TrueTimeMessageParser.getRoutes();
+		List<Message> routes = TrueTimeAPI.getRoutes();
 		Iterator<Message> iterator = routes.iterator();
 		while (iterator.hasNext()){
 			Message element=(Message)iterator.next();

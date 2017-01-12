@@ -16,7 +16,13 @@ public class PaDynamoDbClient {
     public PaDynamoDbClient(final AmazonDynamoDBClient dynamoDBClient) {
         this.dynamoDBClient = dynamoDBClient;
     }
-
+    
+    public void deleteItem(final PaUserDataItem tableItem) {
+        DynamoDBMapper mapper = createDynamoDBMapper();
+        //PaUserDataItem item = mapper.load(tableItem);
+        //return item;
+        mapper.delete(tableItem);
+    }
     /**
      * Loads an item from DynamoDB by primary Hash Key. Callers of this method should pass in an
      * object which represents an item in the DynamoDB table item with the primary key populated.

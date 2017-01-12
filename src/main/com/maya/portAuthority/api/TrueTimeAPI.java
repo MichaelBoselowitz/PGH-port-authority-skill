@@ -10,15 +10,19 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
-import com.maya.portAuthority.util.DirectionHelper;
-import com.maya.portAuthority.util.RouteHelper;
+import com.maya.portAuthority.googleMaps.LocationTracker;
+import com.maya.portAuthority.util.Stop;
+import com.maya.portAuthority.util.JsonUtils;
 
-public class TrueTimeMessageParser extends BaseAPIParser {
-	private static  Logger LOGGER = LoggerFactory.getLogger(TrueTimeMessageParser.class);
+
+public class TrueTimeAPI extends BaseAPIParser {
+	private static  Logger log = LoggerFactory.getLogger(TrueTimeAPI.class);
 	public static final String TRUETIME_URL="http://truetime.portauthority.org/bustime/api/";
 	public static final String VERSION="v1/";
 	public static final String CMD_PREDICTION="getpredictions";
@@ -28,8 +32,8 @@ public class TrueTimeMessageParser extends BaseAPIParser {
 	//public static final String STOPS_URL="http://truetime.portauthority.org/bustime/api/v1/getstops";
 	public static final String ACCESS_ID="cvTWAYXjbFEGcMSQbnv5tpteK";
 
-	public TrueTimeMessageParser() {
-		LOGGER.trace("constructor");
+	public TrueTimeAPI() {
+		log.trace("constructor");
 	}
 
 	/**
@@ -48,21 +52,41 @@ public class TrueTimeMessageParser extends BaseAPIParser {
 	 */
 	public static List<Message> getStops (String busline, String direction){
 		String apiString= TRUETIME_URL+VERSION+CMD_STOPS+"?key="+ACCESS_ID+"&rt="+busline+"&dir="+direction;
-		LOGGER.debug("getStops:apiString="+apiString);
+		log.debug("getStops:apiString="+apiString);
 		List<Message> messages=new ArrayList<Message>();
 		try {
-			messages= TrueTimeMessageParser.parse(apiString);
+			messages= TrueTimeAPI.parse(apiString);
 		} catch (IOException | SAXException | ParserConfigurationException e) {
 			messages.clear();
 			Message errorMsg=new Message();
 			errorMsg.setError(e.getMessage());
 			messages.add(errorMsg);
 		}
-		LOGGER.debug("getStops:messages size"+messages.size());
+		log.debug("getStops:messages size"+messages.size());
 		return messages;
 
 		
 	}
+	
+    /**
+     * Gets list of stops for a route#
+     * @param routeID
+     * @param direction
+     * @return
+     * @throws IOException
+     * @throws JSONException 
+     */
+    public static List<Stop> getStopsAsJson(String routeID, String direction) throws IOException, JSONException{
+    	log.trace("getStopsAsJson: routeId={}, direction={}", routeID, direction);
+    	String url =  "http://truetime.portauthority.org/bustime/api/v2/getstops?key=929FvbAPSEeyexCex5a7aDuus&rt="+routeID+"&dir="+direction.toUpperCase()+"&format=json";
+       JSONObject stopsJSON = null;
+       List<Stop> listOfStops = null;
+       stopsJSON = JsonUtils.readJsonFromUrl(url);
+       listOfStops = LocationTracker.getStopDetails(stopsJSON);
+       return listOfStops;
+    }
+	
+	
 
 	/**
 	 * Use the getstops request to retrieve the set of stops for the specified route and direction.
@@ -120,18 +144,18 @@ public class TrueTimeMessageParser extends BaseAPIParser {
 	public static List<Message> getPredictions (String busline, String stationID){
 		List<Message> messages= new ArrayList<Message>();
 		String apiString= TRUETIME_URL+VERSION+CMD_PREDICTION+"?key="+ACCESS_ID+"&rt="+busline+"&stpid="+stationID;
-		LOGGER.debug("getPredictions:apiString="+apiString);
+		log.debug("getPredictions:apiString="+apiString);
 
 		//TrueTimeMessageParser tester = new TrueTimeMessageParser(apiString);
 		try {
-			messages=TrueTimeMessageParser.parse(apiString);
+			messages=TrueTimeAPI.parse(apiString);
 		} catch (IOException | SAXException | ParserConfigurationException e) {
 			messages.clear();
 			Message errorMsg=new Message();
 			errorMsg.setError(e.getMessage());
 			messages.add(errorMsg);
 		}
-		LOGGER.debug("getPredictions:messages size"+messages.size());
+		log.debug("getPredictions:messages size"+messages.size());
 		return messages;
 	}
 	
@@ -147,18 +171,18 @@ public class TrueTimeMessageParser extends BaseAPIParser {
 	public static List<Message> getPredictions (String stationID, int maxValues){
 		List<Message> messages= new ArrayList<Message>();
 		String apiString= TRUETIME_URL+VERSION+CMD_PREDICTION+"?key="+ACCESS_ID+"&stpid="+stationID+"&top="+maxValues;
-		LOGGER.debug("getPredictions:apiString="+apiString);
+		log.debug("getPredictions:apiString="+apiString);
 
 		//TrueTimeMessageParser tester = new TrueTimeMessageParser(apiString);
 		try {
-			messages=TrueTimeMessageParser.parse(apiString);
+			messages=TrueTimeAPI.parse(apiString);
 		} catch (IOException | SAXException | ParserConfigurationException e) {
 			messages.clear();
 			Message errorMsg=new Message();
 			errorMsg.setError(e.getMessage());
 			messages.add(errorMsg);
 		}
-		LOGGER.debug("getPredictions:messages size"+messages.size());
+		log.debug("getPredictions:messages size"+messages.size());
 		return messages;
 	}
 
@@ -243,17 +267,17 @@ public class TrueTimeMessageParser extends BaseAPIParser {
 	 */
 	public static List<Message> getRoutes(){
 		String apiString= TRUETIME_URL+VERSION+CMD_ROUTES+"?key="+ACCESS_ID;
-		LOGGER.debug("getRoutes:apiString="+apiString);
+		log.debug("getRoutes:apiString="+apiString);
 		List<Message> messages=new ArrayList<Message>();
 		try {
-			messages= TrueTimeMessageParser.parse(apiString);
+			messages= TrueTimeAPI.parse(apiString);
 		} catch (IOException | SAXException | ParserConfigurationException e) {
 			messages.clear();
 			Message errorMsg=new Message();
 			errorMsg.setError(e.getMessage());
 			messages.add(errorMsg);
 		}
-		LOGGER.debug("getRoutes:messages size"+messages.size());
+		log.debug("getRoutes:messages size"+messages.size());
 		return messages;
 	}
 

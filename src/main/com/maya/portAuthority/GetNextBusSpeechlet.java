@@ -23,13 +23,14 @@ import com.amazon.speech.speechlet.SessionStartedRequest;
 import com.amazon.speech.speechlet.Speechlet;
 import com.amazon.speech.speechlet.SpeechletException;
 import com.amazon.speech.speechlet.SpeechletResponse;
+import com.amazon.speech.ui.OutputSpeech;
 import com.amazon.speech.ui.PlainTextOutputSpeech;
 import com.amazon.speech.ui.SsmlOutputSpeech;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazon.speech.ui.Reprompt;
 import com.amazon.speech.ui.SimpleCard;
 import com.maya.portAuthority.api.Message;
-import com.maya.portAuthority.api.TrueTimeMessageParser;
+import com.maya.portAuthority.api.TrueTimeAPI;
 import com.maya.portAuthority.storage.PaDao;
 import com.maya.portAuthority.storage.PaDynamoDbClient;
 import com.maya.portAuthority.storage.PaInput;
@@ -38,22 +39,26 @@ import com.maya.portAuthority.util.*;
 import com.maya.portAuthority.googleMaps.*;
 
 public class GetNextBusSpeechlet implements Speechlet {
+
+
+
 	private static Logger log = LoggerFactory.getLogger(GetNextBusSpeechlet.class);
 
 
-	private static String SPEECH_INSTRUCTIONS = "I can lead you through providing a bus line, direction, and "
-			+ "bus stop to get departure information, "
-			+ "or you can simply open Port Authroity and ask a question like, "
-			+ "when is the next outbound P1 leaving sixth and smithfield. "
-			+ "For a list of supported buslines, ask what bus lines are supported. ";
+//	private static String SPEECH_INSTRUCTIONS = "I can lead you through providing a bus line, direction, and "
+//			+ "bus stop to get departure information, "
+//			+ "or you can simply open Port Authroity and ask a question like, "
+//			+ "when is the next outbound P1 leaving sixth and smithfield. ";
 
 	private static String SPEECH_WELCOME = "Welcome to Pittsburgh Port Authority ";
 
 	private static String AUDIO_WELCOME = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_welcome.mp3\" />";
 	private static String AUDIO_FAILURE = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_failure.mp3\" />";
 	private static String AUDIO_SUCCESS = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_success.mp3\" />";
-	private static String INCLUDE_ROUTE="IncludeRoute";
-	private SkillContext skillContext;
+	
+	private static final String INVOCATION_NAME = "Steel City Transit";
+	
+	//private SkillContext skillContext;
 
 	private Map<String, DataHelper> dataHelpers;
 	
@@ -72,7 +77,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 	public SpeechletResponse onLaunch(LaunchRequest request, Session session) throws SpeechletException {
 		BasicConfigurator.configure();
 		log.info("onLaunch requestId={}, sessionId={}", request.getRequestId(), session.getSessionId());
-		skillContext = new SkillContext();
+		//skillContext = new SkillContext();
 
 		if (amazonDynamoDBClient == null) {
 			amazonDynamoDBClient = new AmazonDynamoDBClient();
@@ -84,7 +89,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 		PaInput input = inputDao.getPaInput(session);
 		if ((input != null) && input.hasAllData()){
 			analytics.postEvent(AnalyticsManager.CATEGORY_LAUNCH, "Return Saved");
-			return buildAllRoutesResponse(input.getData());
+			return buildResponse(input.getData());
 		} else {
 			analytics.postEvent(AnalyticsManager.CATEGORY_LAUNCH, "Welcome");
 			return newAskResponse(AUDIO_WELCOME + SPEECH_WELCOME + RouteHelper.SPEECH, RouteHelper.SPEECH);
@@ -113,12 +118,30 @@ public class GetNextBusSpeechlet implements Speechlet {
 	 * Called when the user invokes an intent.
 	 */
 	public SpeechletResponse onIntent(IntentRequest request, Session session) throws SpeechletException {
-	     log.info("onIntent intent={}, requestId={}, sessionId={}", request.getIntent().getName(), request.getRequestId(), session.getSessionId());
+	    log.info("onIntent intent={}, requestId={}, sessionId={}", request.getIntent().getName(), request.getRequestId(), session.getSessionId());
 	 	String feedbackText = "";
 		try {
 			Intent intent = request.getIntent();
 			analytics.postEvent(AnalyticsManager.CATEGORY_INTENT, intent.getName());
-			if (intent.getName().equals("OneshotBusIntent")){
+			if (intent.getName().equals("ResetBusIntent")){
+				log.info("Intent equals ResetBusIntent");
+				this.getPaDao().deletePaInput(session);
+				//clear data from DB;
+				PlainTextOutputSpeech outputSpeech = new PlainTextOutputSpeech();
+				outputSpeech.setText("Reset History");
+				return SpeechletResponse.newTellResponse(outputSpeech);
+			}
+			if (intent.getName().equals("AllBusRoutesIntent")){
+				log.info("Intent equals AllBusRoutesIntent");
+				PaInput input = getPaDao().getPaInput(session);
+				if ((input != null) && input.hasAllData()){
+					analytics.postEvent(AnalyticsManager.CATEGORY_LAUNCH, "Return Saved");
+					return buildAllRoutesResponse(input.getData());
+				} else {
+					log.debug("AllRoutesIntent was unable to retreive all saved data");
+				}
+			} else if (intent.getName().equals("OneshotBusIntent")){
+				log.info("Intent equals OneshotBusIntent");
 				Iterator<DataHelper> itr = dataHelpers.values().iterator();
 				while (itr.hasNext()){
 					DataHelper dataHelper=itr.next();
@@ -126,6 +149,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 				}
 
 			} else { //DirectionBusIntent {Direction} || RouteBusIntent {Route} || StationBusIntent {StationName}
+				log.info("Intent equals something else");
 				DataHelper dataHelper = dataHelpers.get(intent.getName());
 				feedbackText=dataHelper.putValuesInSession(session,intent);
 			}
@@ -194,7 +218,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 	}
 	
 	private SpeechletResponse checkForAdditionalQuestions(Session session, String feedbackText) {
-		if (log.isInfoEnabled()) {
+		if (log.isDebugEnabled()) {
 			logSession(session, "checkingForAdditionalQuestions: feedbackText={}"+feedbackText);
 		}
 		// Do I have all the data I need?
@@ -222,7 +246,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 		
 		try{
 			List<Message> messages = new ArrayList<Message>();
-			messages = TrueTimeMessageParser.getPredictions(inputData.getStopID());
+			messages = TrueTimeAPI.getPredictions(inputData.getStopID());
 
 			if (messages.size() == 0) {
 				log.info("No Messages");
@@ -291,7 +315,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 
 		
 		List<Message> messages = new ArrayList<Message>();
-		messages = TrueTimeMessageParser.getPredictions(inputData.getRouteID(), inputData.getStopID());
+		messages = TrueTimeAPI.getPredictions(inputData.getRouteID(), inputData.getStopID());
 		log.info("getAnswer... with " + messages.size() + "messages");
 
 		try {
@@ -308,7 +332,8 @@ public class GetNextBusSpeechlet implements Speechlet {
 				+ " in the next 30 minutes  ";
 				speechOutput = AUDIO_FAILURE + textOutput;
 				analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "No Result", textOutput, messages.size());
-				outputSpeech.setSsml("<speak> " + speechOutput + "</speak>");
+				String endText="<break time=\"0.25s\" />  to hear predictions for all routes that stop there, say <break time=\"0.25s\" /> Alexa, ask "+INVOCATION_NAME+" for All Routes";
+				outputSpeech.setSsml("<speak> " + speechOutput + endText+"</speak>");
 				return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput));
 			}
 			if ((messages.size() == 1) && (messages.get(0).getMessageType().equals(Message.ERROR))) {
@@ -319,7 +344,8 @@ public class GetNextBusSpeechlet implements Speechlet {
 				textOutput = locationOutput+textOutput;
 				speechOutput = AUDIO_FAILURE + textOutput;
 				analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "No Result", textOutput, messages.size());
-				outputSpeech.setSsml("<speak> " + speechOutput + "</speak>");
+				String endText="<break time=\"0.25s\" />  to hear predictions for all routes that stop there, say <break time=\"0.25s\" /> Alexa, ask "+INVOCATION_NAME+" for All Routes";
+				outputSpeech.setSsml("<speak> " + speechOutput + endText+"</speak>");
 				return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput));
 			}
 
@@ -342,7 +368,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 					speechOutput = speechOutput + " <break time=\"0.25s\" /> and in " + when + " minutes";
 				}
 			}
-			String endText="<break time=\"0.25s\" />  to hear predictions for all routes that stop at "+inputData.getStopName() + "say Alexa, launch Pittsburgh Bus";
+			String endText="<break time=\"0.25s\" />  to hear predictions for all routes that stop there, say <break time=\"0.25s\" /> Alexa, ask "+INVOCATION_NAME+" for All Routes";
 			outputSpeech.setSsml("<speak> " + speechOutput + endText+"</speak>");
 			analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "Success", textOutput, messages.size());
 			return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput));
@@ -475,6 +501,27 @@ public class GetNextBusSpeechlet implements Speechlet {
 		if (inputDao==null) {inputDao = new PaDao(dynamoDbClient);}
 		inputDao.savePaInput(input);
 
+	}
+	
+	private AmazonDynamoDBClient getAmazonDynamoDBClient(){
+		if (this.amazonDynamoDBClient == null) { 
+			this.amazonDynamoDBClient = new AmazonDynamoDBClient(); 
+		}
+		return this.amazonDynamoDBClient;
+	}
+	
+	private PaDynamoDbClient getPaDynamoDbClient(){
+		if (this.dynamoDbClient == null) { 
+			this.dynamoDbClient = new PaDynamoDbClient(getAmazonDynamoDBClient());
+		}
+		return this.dynamoDbClient;
+	}
+	
+	private PaDao getPaDao(){
+		if (this.inputDao == null) {
+			this.inputDao = new PaDao(getPaDynamoDbClient());
+		}
+		return this.inputDao;
 	}
 	
 	public class Result implements Comparable<Result>{
