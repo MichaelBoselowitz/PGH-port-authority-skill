@@ -1,5 +1,5 @@
 
-package com.maya.portAuthority.speechAssets;
+package com.maya.portAuthority.util;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,11 +23,12 @@ public class DirectionCorrector {
         expectedInputs.put("AWAY", "OUTBOUND");
     }
 
-    public static String getDirection(String inputDirection) {
-        if (expectedInputs.get(inputDirection) != null) {
-            return expectedInputs.get(inputDirection);
+    public static String getDirection(String inputDirection) throws Exception {
+    	String output=expectedInputs.get(inputDirection.toUpperCase());
+        if (output != null) {
+            return output;
         } else {
-            return "Cannot understand the direction " + inputDirection + ". Please try again.";
+            throw new Exception ("Cannot understand the direction " + inputDirection);
         }
     }
 }

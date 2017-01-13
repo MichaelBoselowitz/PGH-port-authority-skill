@@ -17,6 +17,8 @@ public class Message implements Comparable<Message>{
 	static final String DISTANCE_TO_STOP ="dstp";
 	static final String ROUTE_ID ="rt";
 	static final String ROUTE_NAME ="rtnm";
+	static final String ROUTE_COLOR ="rtnm";
+	static final String ROUTE_DESIGNATOR ="rtnm";
 	static final String DIRECTION ="rtdir";
 	static final String DESTINATION ="des";
 	static final String PREDICTION_TIME ="prdtm";
@@ -88,7 +90,16 @@ public class Message implements Comparable<Message>{
      */
     private String routeName; //<xs:element name="rtnm" type="xs:string" minOccurs="1" maxOccurs="1"/>
    
-
+	 /**
+	  * Color of the route line used in map (ex. "#ffffff")
+	  */
+	 private String routeColor;
+	 
+	 /**
+	  *  Language-specific route designator meant for display.
+	  */
+	 private String routeDesignator;
+			 
 	/**
      * Direction of travel of the route associated with this prediction (ex. "East Bound").
      */
@@ -215,6 +226,22 @@ public class Message implements Comparable<Message>{
 
 	public void setRouteName(String routeName) {
 		this.routeName = routeName;
+	}
+
+	public String getRouteColor() {
+		return routeColor;
+	}
+
+	public void setRouteColor(String routeColor) {
+		this.routeColor = routeColor;
+	}
+
+	public String getRouteDesignator() {
+		return routeDesignator;
+	}
+
+	public void setRouteDesignator(String routeDesignator) {
+		this.routeDesignator = routeDesignator;
 	}
 
 	public String getDirection() {

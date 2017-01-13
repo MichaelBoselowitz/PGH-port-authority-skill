@@ -1,5 +1,7 @@
 package com.maya.portAuthority.util;
 
+import com.maya.portAuthority.api.Message;
+
 public class Route {
 	/**
 	 * rt- Alphanumeric designator of a route (ex. "20" or "X20").
@@ -19,7 +21,24 @@ public class Route {
 	 * rtdd- Language-specific route designator meant for display.
 	 */
 	private String designator;
-
+	
+	//////////////////////
+	public Route(){
+		 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+	
+	private Route(String id, String name, String color, String designator){
+		this.id=id;
+		this.name=name;
+		this.color=color;
+		this.designator=designator;
+	}
+	
+	public static Route createRoute(Message message){		
+		return new Route(message.getRouteID(), message.getRouteName(), message.getRouteColor(), message.getRouteDesignator());
+	}
+	
+	////////// GETTERS/ SETTERS////////
 	public String getId() {
 		return id;
 	}

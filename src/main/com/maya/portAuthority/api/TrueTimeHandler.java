@@ -101,6 +101,10 @@ public class TrueTimeHandler extends DefaultHandler {
     			   message.setRouteID(temp);
     		   } else if (qName.equalsIgnoreCase(Message.ROUTE_NAME)) {
     			   message.setRouteName(temp);
+    		   } else if (qName.equalsIgnoreCase(Message.ROUTE_COLOR)) {
+    			   message.setRouteColor(temp);
+    		   } else if (qName.equalsIgnoreCase(Message.ROUTE_DESIGNATOR)) {
+    			   message.setRouteDesignator(temp);
     		   } else if (qName.equalsIgnoreCase(Message.DIRECTION)) {
     			   message.setDirection(temp);
     		   } else if (qName.equalsIgnoreCase(Message.DESTINATION)) {
