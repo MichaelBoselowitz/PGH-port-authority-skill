@@ -16,7 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.maya.portAuthority.InvalidInputException;
-import com.maya.portAuthority.util.Coordinates;
+import com.maya.portAuthority.util.Location;
 import com.maya.portAuthority.util.JsonUtils;
 import com.maya.portAuthority.util.Stop;
 import com.maya.portAuthority.api.TrueTimeAPI;
@@ -32,7 +32,7 @@ public class NearestStopLocator {
 	private static final String GOOGLE_MAPS_KEY="AIzaSyBzW19DGDOi_20t46SazRquCLw9UNp_C8s";
 
 
-	public static Stop process(Coordinates source, String routeID, String direction) throws IOException, JSONException, InvalidInputException{
+	public static Stop process(Location source, String routeID, String direction) throws IOException, JSONException, InvalidInputException{
 		log.trace("Process: source={}, routeId={}, direction={}", source, routeID, direction);
 		if ((source==null)||(routeID==null)||(direction==null)){
 			log.error("Bad Input");
@@ -49,9 +49,9 @@ public class NearestStopLocator {
 
 	}
 
-	public static Coordinates getSourceLocation(String source)throws IOException, JSONException, InvalidInputException {
+	public static Location getSourceLocation(String source)throws IOException, JSONException, InvalidInputException {
 		log.trace("getSourceLocation: source={}", source);
-		List<Coordinates> sourceLocation = getSourceLocationCoordinates(source, 1);
+		List<Location> sourceLocation = getSourceLocationCoordinates(source, 1);
 
 		//get the first location returned:
 		return(sourceLocation.get(0));
@@ -66,10 +66,10 @@ public class NearestStopLocator {
 	 * @throws IOException
 	 * @throws JSONException 
 	 */
-	public static List<Coordinates> getSourceLocationCoordinates(String source, int numResults) throws IOException, JSONException, InvalidInputException {
+	public static List<Location> getSourceLocationCoordinates(String source, int numResults) throws IOException, JSONException, InvalidInputException {
 		log.info("getSourceLocationCoordinates: source={}", source);
 		JSONObject currentLocationDetails = null;
-		List<Coordinates> listOfLocationCoordinates = null;
+		List<Location> listOfLocationCoordinates = null;
 		String currLocation = (source + " Pittsburgh").replaceAll("\\s", "+");
 		String currLocationURL = TEXT_SEARCH_URL+"?query=" + currLocation + "&sensor=false&key="+GOOGLE_MAPS_KEY;
 		currentLocationDetails = JsonUtils.readJsonFromUrl(currLocationURL);

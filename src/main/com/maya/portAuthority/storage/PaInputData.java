@@ -3,7 +3,7 @@ package com.maya.portAuthority.storage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.maya.portAuthority.util.Coordinates;
+import com.maya.portAuthority.util.Location;
 import com.maya.portAuthority.util.Stop;
 
 /**
@@ -140,7 +140,7 @@ public class PaInputData {
 		setStopLon(stop.getLongitude());
 	}
 	
-	public void setLocation( Coordinates c){
+	public void setLocation( Location c){
 		setLocationAddress(c.getAddress());
 		setLocationLat(c.getLat() + "");
 		setLocationLong(c.getLng() + "");

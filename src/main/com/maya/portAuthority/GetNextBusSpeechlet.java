@@ -243,13 +243,13 @@ public class GetNextBusSpeechlet implements Speechlet {
 		return inputData;
 	}
 
-	private Stop getNearestStop(PaInputData inputData) throws InvalidInputException, IOException, JSONException {
-		Coordinates c = new Coordinates();
-		c.setAddress(inputData.getLocationAddress());
-		c.setLat(new Double(inputData.getLocationLat()).doubleValue());
-		c.setLng(new Double(inputData.getLocationLong()).doubleValue());
+	private Stop getNearestStop(PaInputData in) throws InvalidInputException, IOException, JSONException {
+		Location c = new Location();
+		c.setAddress(in.getLocationAddress());
+		c.setLat(new Double(in.getLocationLat()).doubleValue());
+		c.setLng(new Double(in.getLocationLong()).doubleValue());
 
-		return NearestStopLocator.process(c, inputData.getRouteID(), inputData.getDirection());
+		return NearestStopLocator.process(c, in.getRouteID(), in.getDirection());
 	}
 
 	private List<Message> getPredictions(PaInputData inputData) {

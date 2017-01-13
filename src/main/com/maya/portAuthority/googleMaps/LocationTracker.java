@@ -14,7 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.maya.portAuthority.InvalidInputException;
-import com.maya.portAuthority.util.Coordinates;
+import com.maya.portAuthority.util.Location;
 import com.maya.portAuthority.util.Stop;
 
 /**
@@ -38,26 +38,42 @@ public class LocationTracker {
      * @return
      * @throws JSONException 
      */
-    public static List<Coordinates> getLatLngDetails(JSONObject json, int limit) throws JSONException, InvalidInputException {
-    	List<Coordinates> coordinates = new ArrayList<>();
+    public static List<Location> getLatLngDetails(JSONObject json, int limit) throws JSONException, InvalidInputException {
+    	List<Location> output = new ArrayList<>();
+    	
         JSONArray results = json.getJSONArray("results");
         log.debug("JSON Results Size={}",results.length());
         if (results.length() == 0) {
             throw new InvalidInputException("No results from JSON","I did not understand the source location");
         }
         int numResultsToReturn=Math.min(limit, results.length());
+        
+        
+        JSONObject result;
+       	JSONObject location;
+
         for (int i = 0; i < numResultsToReturn; i++) {
-        	JSONObject location = results.getJSONObject(i).getJSONObject("geometry").getJSONObject("location");
-        	double lat = location.getDouble("lat");
-        	double lng = location.getDouble("lng");
-        	Coordinates c = new Coordinates();
-        	c.setLat(lat);
-        	c.setLng(lng);
-        	String address = results.getJSONObject(i).getString("formatted_address");
-        	c.setAddress(address);
-        	coordinates.add(c);
+        	result = results.getJSONObject(i);
+        	
+        	location = result.getJSONObject("geometry").getJSONObject("location");
+        	Location c = new Location(
+        			result.getString("name"),
+        			location.getDouble("lat"),
+        			location.getDouble("lng"),
+        			result.getString("formatted_address"),
+        			makeList(result.getJSONArray("types")));
+
+        	output.add(c);
         }
-        return coordinates;
+        return output;
+    }
+    
+    private static List<String> makeList(JSONArray array) throws JSONException{
+    	List<String>  output = new ArrayList<String>();
+    	for (int i=0;i<array.length();i++){
+    		output.add(array.getString(i));
+    	}
+    	return output;
     }
     
     public static List<Stop> getStopDetails(JSONObject json) throws JSONException {

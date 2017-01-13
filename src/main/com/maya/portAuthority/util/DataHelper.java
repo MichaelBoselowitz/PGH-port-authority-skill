@@ -140,15 +140,17 @@ public class DataHelper {
 		try {
 			log.debug("putting value in session Slot Location:" + location);
 			session.setAttribute(LOCATION, location.toUpperCase());
-			Coordinates c = NearestStopLocator.getSourceLocation(location);
-			String streetAddress = simplifyAddress(c.getAddress());
+			Location c = NearestStopLocator.getSourceLocation(location);
+			//String streetAddress = simplifyAddress(c.getAddress());
 			session.setAttribute(LAT, c.getLat());
 			session.setAttribute(LONG, c.getLng());
-			session.setAttribute(ADDRESS, streetAddress);
-			if (!location.equalsIgnoreCase(streetAddress)) {
-				return "I found " + location + " at " + streetAddress + ".";
-			} else {
+			session.setAttribute(ADDRESS, c.getStreetAddress());
+			
+			if (c.isAddress()) {
+				// no need for feedback
 				return "";
+			} else{
+				return "I found " + location + " at " + c.getStreetAddress() + ".";
 			}
 
 		} catch (JSONException jsonE) {
@@ -160,10 +162,7 @@ public class DataHelper {
 		}
 	}
 
-	public static String simplifyAddress(String address) {
-		String[] addressLines = address.split(",");
-		return addressLines[0];
-	}
+
 
 	/// Route
 	public static String putRouteValuesInSession(Session session, Intent intent) throws InvalidInputException {
