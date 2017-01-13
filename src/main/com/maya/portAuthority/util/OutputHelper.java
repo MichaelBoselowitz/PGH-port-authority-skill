@@ -65,7 +65,7 @@ public class OutputHelper {
 		String textOutput;
 		String speechOutput;
 
-		final String locationOutput="The nearest stop to "+  inputData.getLocationName() +" is " + inputData.getStopName()+" . ";
+		final String locationOutput="The nearest stop to "+  inputData.getLocationName() +" is " + inputData.getStopName()+". ";
 		final String stopOutput=" At " +inputData.getStopName()+", ";
 		final String allRoutesHelpText=" <break time=\"0.25s\" />  to hear predictions for all routes that stop "+stopOutput+  ", say <break time=\"0.25s\" /> Alexa, ask "+GetNextBusSpeechlet.INVOCATION_NAME+" for All Routes";
 
@@ -103,7 +103,7 @@ public class OutputHelper {
 		}
 
 		if ((c.needsMoreHelp())&&(!c.isAllRoutes())){
-			textOutput+=allRoutesHelpText;
+			speechOutput+=allRoutesHelpText;
 		}
 		outputSpeech.setSsml("<speak> " + AUDIO_SUCCESS + speechOutput + "</speak>");
 		return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput));
