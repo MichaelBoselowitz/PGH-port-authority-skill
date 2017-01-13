@@ -1,8 +1,14 @@
 
-package com.maya.portAuthority.speechAssets;
+package com.maya.portAuthority.util;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.maya.portAuthority.UnexpectedInputException;
+
 
 /**
  *
@@ -10,6 +16,8 @@ import java.util.Map;
  */
 public class RouteCorrector {
 
+	private static Logger log = LoggerFactory.getLogger(RouteCorrector.class);
+	
     private static final Map<String, String> expectedInputs = new HashMap<>(200);
 
     static {
@@ -138,11 +146,13 @@ public class RouteCorrector {
         expectedInputs.put("MI", "MI");
     }
 
-    public static String getRoute(String inputRoute) {
-        if (expectedInputs.get(inputRoute) != null) {
-            return expectedInputs.get(inputRoute);
+    public static String getRoute(String inputRoute) throws UnexpectedInputException{
+    	inputRoute = inputRoute.replaceAll("\\s+", "");
+    	String output = expectedInputs.get(inputRoute.toUpperCase());
+        if (output != null) {
+        	return output;
         } else {
-            return "Cannot find route " + inputRoute + ". Please try again.";
+            throw new UnexpectedInputException ("Cannot find route " + inputRoute);
         }
     }
 }
