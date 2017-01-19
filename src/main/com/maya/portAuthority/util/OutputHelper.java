@@ -11,12 +11,23 @@ import com.amazon.speech.ui.SsmlOutputSpeech;
 import com.maya.portAuthority.GetNextBusSpeechlet;
 import com.maya.portAuthority.storage.PaInputData;
 
+
+
 public class OutputHelper {
 	private static String SPEECH_WELCOME = "Welcome to Pittsburgh Port Authority ";
 
-	public static String AUDIO_WELCOME = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_welcome.mp3\" />";
-	private static String AUDIO_FAILURE = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_failure.mp3\" />";
-	private static String AUDIO_SUCCESS = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_success.mp3\" />";
+	public static final String AUDIO_WELCOME = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_welcome.mp3\" />";
+	private static final String AUDIO_FAILURE = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_failure.mp3\" />";
+	private static final String AUDIO_SUCCESS = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_success.mp3\" />";
+	
+	//TODO: replace string building with String format. Like the below.
+	//String template = "Hello %s Please find attached %s which is due on %s";
+	//String message = String.format(template, name, invoiceNumber, dueDate);
+	
+	//TODO: add markers into conversation
+	private static final String CHANGE_MARKER=" <break time=\"0.5s\" /> By the way, ";
+	private static final String SUCCESS_MARKER="okay, ";
+	private static final String FAILED_MARKER="oh, ";
 
 
 	//	public static SpeechletResponse getNoResponse(PaInputData inputData) {
@@ -25,6 +36,7 @@ public class OutputHelper {
 
 	public static SpeechletResponse getWelcome(){
 		String output=AUDIO_WELCOME+" "+SPEECH_WELCOME + DataHelper.ROUTE_PROMPT;
+		
 		return newAskResponse(output, DataHelper.ROUTE_PROMPT);
 	}
 
@@ -33,7 +45,7 @@ public class OutputHelper {
 		final String locationOutput="The nearest stop to "+  inputData.getLocationName() +" is " + inputData.getStopName()+".";
 		final String allRoutesOutput=" No " + inputData.getDirection() + ", busses are expected at " + inputData.getStopName() + " in the next 30 minutes ";
 		final String singleRoutesOutput=" No " + inputData.getDirection() + ", " + inputData.getRouteID() + " is expected at " + inputData.getStopName() + " in the next 30 minutes  ";
-		final String allRoutesHelpText=" <break time=\"0.25s\" />  to hear predictions for all routes that stop there, say <break time=\"0.25s\" /> Alexa, ask "+GetNextBusSpeechlet.INVOCATION_NAME+" for All Routes";
+		final String allRoutesHelpText=CHANGE_MARKER+"to hear predictions for all routes that stop there, say <break time=\"0.25s\" /> Alexa, ask "+GetNextBusSpeechlet.INVOCATION_NAME+" for All Routes";
 
 		String textOutput="";
 		if (c.needsLocation()){

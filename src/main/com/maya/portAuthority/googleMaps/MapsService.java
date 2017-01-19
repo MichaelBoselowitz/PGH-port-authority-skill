@@ -16,7 +16,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.json.JSONException;
 
 import com.maya.portAuthority.InvalidInputException;
-import com.maya.portAuthority.util.Coordinates;
+import com.maya.portAuthority.util.Location;
 import com.maya.portAuthority.util.Stop;
 
 /**
@@ -39,7 +39,7 @@ public class MapsService extends HttpServlet {
         String direction = request.getParameter("direction").trim();
         
         try {
-        	Coordinates c = NearestStopLocator.getSourceLocation(source);
+        	Location c = NearestStopLocator.getSourceLocation(source);
         	Stop stop = NearestStopLocator.process(c, route, direction);
         	request.setAttribute("nearestStopName", stop.getStopName());
         } catch (JSONException ex) {
