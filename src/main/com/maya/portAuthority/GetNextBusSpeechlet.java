@@ -70,6 +70,8 @@ public class GetNextBusSpeechlet implements Speechlet {
 			return buildResponse(storedInput.getData(), predictions);
 		} else {
 			analytics.postEvent(AnalyticsManager.CATEGORY_LAUNCH, "Welcome");
+			//TODO: review whether this value should be placed in session by someone else. 
+			session.setAttribute(DataHelper.LAST_QUESTION, DataHelper.ROUTE_PROMPT);
 			return OutputHelper.getWelcome();
 		}
 	}
@@ -94,6 +96,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 	public SpeechletResponse onIntent(IntentRequest request, Session session) throws SpeechletException {
 		log.info("onIntent intent={}, requestId={}, sessionId={}", request.getIntent().getName(),
 				request.getRequestId(), session.getSessionId());
+		log.info("onIntent sessionValue={}", session.getAttributes().toString());
 		String feedbackText = "";
 		try {
 			Intent intent = request.getIntent();
@@ -136,28 +139,38 @@ public class GetNextBusSpeechlet implements Speechlet {
 
 			case DataHelper.ONE_SHOT_INTENT_NAME:
 				// collect all the information provided by the user
-				feedbackText = DataHelper.putRouteValuesInSession(session, intent);
-				feedbackText += DataHelper.putLocationValuesInSession(session, intent);
-				feedbackText += DataHelper.putDirectionValuesInSession(session, intent);
+
+				if (DataHelper.getValueFromIntentSlot(intent, DataHelper.ROUTE_ID)!=null){
+					feedbackText = DataHelper.putRouteValuesInSession(session, intent);
+				}
+
+				if (DataHelper.getValueFromIntentSlot(intent, DataHelper.LOCATION)!=null){
+					feedbackText += DataHelper.putLocationValuesInSession(session, intent);
+				}
+
+				if (DataHelper.getValueFromIntentSlot(intent, DataHelper.DIRECTION)!=null){
+					feedbackText += DataHelper.putDirectionValuesInSession(session, intent);
+				}
+
 				break;
 
-			case DataHelper.DIRECTION_INTENT_NAME:
-				// collect the direction information
-				feedbackText = DataHelper.putDirectionValuesInSession(session, intent);
-				break;
-
-			case DataHelper.LOCATION_INTENT_NAME:
-				// collect the location information
-				feedbackText = DataHelper.putLocationValuesInSession(session, intent);
-				break;
-
-			case DataHelper.ROUTE_INTENT_NAME:
-				// collect the route information
-				feedbackText = DataHelper.putRouteValuesInSession(session, intent);
-				break;
+//			case DataHelper.DIRECTION_INTENT_NAME:
+//				// collect the direction information
+//				feedbackText = DataHelper.putDirectionValuesInSession(session, intent);
+//				break;
+//
+//			case DataHelper.LOCATION_INTENT_NAME:
+//				// collect the location information
+//				feedbackText = DataHelper.putLocationValuesInSession(session, intent);
+//				break;
+//
+//			case DataHelper.ROUTE_INTENT_NAME:
+//				// collect the route information
+//				feedbackText = DataHelper.putRouteValuesInSession(session, intent);
+//				break;
 
 			default:
-				log.error("Cannot Handle Intent:" + intent.getName());
+				feedbackText= ConversationRouter.putValuesInSession(session, intent);
 			}
 
 		} catch (InvalidInputException e) {
@@ -168,7 +181,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 		// if we don't have everything we need to create predictions, continue
 		// the conversation
 		SpeechletResponse furtherQuestions;
-		if ((furtherQuestions = checkForAdditionalQuestions(session, feedbackText)) != null) {
+		if ((furtherQuestions = ConversationRouter.checkForAdditionalQuestions(session, feedbackText)) != null) {
 			return furtherQuestions;
 		} else if (log.isInfoEnabled()) {
 			logSession(session, "Returning response for:");
@@ -204,29 +217,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 		analytics.postSessionEvent(AnalyticsManager.ACTION_SESSION_END);
 	}
 
-	////////////////////////////// PRIVATE METHODS////////////////////////////
-	private SpeechletResponse checkForAdditionalQuestions(Session session) {
-		return checkForAdditionalQuestions(session, "");
-	}
 
-	private SpeechletResponse checkForAdditionalQuestions(Session session, String feedbackText) {
-		if (log.isDebugEnabled()) {
-			logSession(session, "checkingForAdditionalQuestions: feedbackText={}" + feedbackText);
-		}
-		// Need Route, Location, and Direction
-		if (DataHelper.getValueFromSession(session, DataHelper.ROUTE_ID) == null) {
-			return OutputHelper.newAskResponse(feedbackText + "," + DataHelper.ROUTE_PROMPT, DataHelper.ROUTE_PROMPT);
-		}
-		if (DataHelper.getValueFromSession(session, DataHelper.LOCATION) == null) {
-			return OutputHelper.newAskResponse( feedbackText + "," + DataHelper.LOCATION_PROMPT, DataHelper.LOCATION_PROMPT);
-		}
-		if (DataHelper.getValueFromSession(session, DataHelper.DIRECTION) == null) {
-			return OutputHelper.newAskResponse( feedbackText + "," + DataHelper.DIRECTION_PROMPT,
-					DataHelper.DIRECTION_PROMPT);
-		}
-
-		return null;
-	}
 
 	private PaInputData makeFromSession(Session session) {
 		// TODO: Make Session Data be a PaInput

@@ -54,6 +54,9 @@ public class DataHelper {
 	public static final String ROUTE_PROMPT = "Which bus line would you like arrival information for?";
 	public static final String LOCATION_PROMPT = "Where are you now?";
 	public static final String DIRECTION_PROMPT = "In which direction are you <w role=\"ivona:NN\">traveling</w>?";
+	public static final String INTENT_HELP_PROMPT = "Use a complete sentence, like. I am currently outside Gateway Three";
+
+	public static final String LAST_QUESTION = "LastQuestion";
 
 	// private ArrayList<String> validIntents = null;
 
@@ -77,11 +80,37 @@ public class DataHelper {
 	public static String getValueFromIntentSlot(Intent intent, String name) {
 		log.trace("getValueFromIntentSlot" + intent.getName());
 		Slot slot = intent.getSlot(name);
+		if (slot == null) {
+			log.error("Cannot get Slot={} for Intent={} ", name, intent.getName());
+			// if we can't return the requested slot from this intent
+			// return the default slot for the intent
+			slot = intent.getSlot(getSlotNameForIntentName(intent.getName()));
+		}
 		return (slot != null) ? slot.getValue() : null;
 	}
 
+	private static String getSlotNameForIntentName(String intentName) {
+		if (intentName == null) {
+			return null;
+		}
+
+		String output = null;
+		switch (intentName) {
+		case ROUTE_INTENT_NAME:
+			output = ROUTE_ID;
+			break;
+		case LOCATION_INTENT_NAME:
+			output = LOCATION;
+			break;
+		case DIRECTION_INTENT_NAME:
+			output = DIRECTION;
+			break;
+		}
+		return output;
+	}
+
 	public static String getValueFromSession(Session session, String name) {
-		log.trace("getValuesFromSession");
+		log.info("getValuesFromSession name={}",name);
 		if (session.getAttributes().containsKey(name)) {
 			return (String) session.getAttribute(name);
 		} else {
@@ -93,6 +122,7 @@ public class DataHelper {
 		log.trace("putDirectionValuesInSession" + intent.getName());
 
 		String direction = getValueFromIntentSlot(intent, DIRECTION);
+		log.info("retreivedSlot " + DIRECTION+" : "+direction);
 		if (direction == null) {
 			if (intent.getName().equals(ONE_SHOT_INTENT_NAME)) {
 				// For OneShotBusIntent, this is an acceptable condition.
@@ -106,7 +136,9 @@ public class DataHelper {
 		}
 
 		try {
-			session.setAttribute(DIRECTION, DirectionCorrector.getDirection(direction));
+			direction=DirectionCorrector.getDirection(direction);
+			log.info("putting value in session Slot " + DIRECTION+" : "+direction);
+			session.setAttribute(DIRECTION, direction);
 		} catch (Exception e) {
 			throw new InvalidInputException(e.getMessage(), e, "Please repeat your direction. " + DIRECTION_PROMPT);
 		}
@@ -120,8 +152,9 @@ public class DataHelper {
 	 * that to a street address and put it in session.
 	 */
 	public static String putLocationValuesInSession(Session session, Intent intent) throws InvalidInputException {
-		log.trace("putLocationValuesInSession" + intent.getName());
+		log.info("putLocationValuesInSession" + intent.getName());
 		String location = getValueFromIntentSlot(intent, LOCATION);
+		log.info("retreivedSlot " + LOCATION+" : "+location);
 
 		// Handle Null Location
 		if (location == null) {
@@ -138,7 +171,8 @@ public class DataHelper {
 
 		// Find address for location
 		try {
-			log.debug("putting value in session Slot Location:" + location);
+			location=LocationCorrector.getLocation(location);
+			log.info("putting value in session Slot Location:" + location);
 			session.setAttribute(LOCATION, location.toUpperCase());
 			Location c = NearestStopLocator.getSourceLocation(location);
 			//String streetAddress = simplifyAddress(c.getAddress());
@@ -146,10 +180,7 @@ public class DataHelper {
 			session.setAttribute(LONG, c.getLng());
 			session.setAttribute(ADDRESS, c.getStreetAddress());
 			
-			if (c.isAddress()) {
-				// no need for feedback
-				return "";
-			} else{
+			if (!c.isAddress()) {
 				return "I found " + location + " at " + c.getStreetAddress() + ".";
 			}
 
@@ -159,17 +190,22 @@ public class DataHelper {
 		} catch (IOException ioE) {
 			throw new InvalidInputException("Cannot reach Google Maps ", ioE,
 					"Please repeat your location. " + LOCATION_PROMPT);
+		} catch (UnexpectedInputException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
+		return "";
 	}
 
 
 
 	/// Route
 	public static String putRouteValuesInSession(Session session, Intent intent) throws InvalidInputException {
-		log.trace("putRouteValuesInSession" + intent.getName());
+		log.info("putRouteValuesInSession" + intent.getName());
 		Route route;
 
 		String routeID = getValueFromIntentSlot(intent, ROUTE_ID);
+		log.info("retreivedSlot " + ROUTE_ID+" : "+routeID);
 
 		// Handle Null routeID
 		if (routeID == null) {
@@ -188,10 +224,18 @@ public class DataHelper {
 
 			route = getMatchedRoute(routeID);
 
+			log.info("putting value in session Slot " + ROUTE_ID+" : "+route.getId());
 			session.setAttribute(ROUTE_ID, route.getId());
 			session.setAttribute(ROUTE_NAME, route.getName());
 
 		} catch (UnexpectedInputException e) {
+			//TODO: Rephrase if question different.
+			String lastQuestion=DataHelper.getValueFromSession(session, DataHelper.LAST_QUESTION);
+			log.error("UnexpectedInputException:Message={}:LastQuestion={}",e.getMessage(),lastQuestion);
+			
+			if ((lastQuestion!=null)&&(lastQuestion.equals(DataHelper.LOCATION_PROMPT))){
+				throw new InvalidInputException(e.getMessage(), e, INTENT_HELP_PROMPT);
+			}
 			throw new InvalidInputException(e.getMessage(), e, "Please repeat your bus line. " + ROUTE_PROMPT);
 			
 		} catch (APIException apiE) {
