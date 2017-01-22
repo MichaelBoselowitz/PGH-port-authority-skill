@@ -18,6 +18,11 @@ public class Location {
     public Location(){	
     }
     
+    public Location(double lat, double lng){	
+        this.lat = lat;
+        this.lng = lng;
+    }
+    
     public Location(double lat, double lng, String address) {
 		this.lat=lat;
 		this.lng=lng;
