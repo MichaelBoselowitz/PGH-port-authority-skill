@@ -4,10 +4,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 import com.amazon.speech.speechlet.SpeechletResponse;
+import com.amazon.speech.ui.Image;
 import com.amazon.speech.ui.PlainTextOutputSpeech;
 import com.amazon.speech.ui.Reprompt;
 import com.amazon.speech.ui.SimpleCard;
 import com.amazon.speech.ui.SsmlOutputSpeech;
+import com.amazon.speech.ui.StandardCard;
 import com.maya.portAuthority.GetNextBusSpeechlet;
 import com.maya.portAuthority.storage.PaInputData;
 
@@ -118,18 +120,31 @@ public class OutputHelper {
 			speechOutput+=allRoutesHelpText;
 		}
 		outputSpeech.setSsml("<speak> " + AUDIO_SUCCESS + speechOutput + "</speak>");
-		return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput));
+		return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput, inputData.getLocationLat(), inputData.getLocationLong(), inputData.getStopLat(), inputData.getStopLon()));
 	}
-	/**
-	 * @param s
-	 * @return
-	 */
-	private static SimpleCard buildCard(String s){
-		SimpleCard card=new SimpleCard();
-		card.setTitle("Pittsburgh Port Authority");
-		card.setContent(s);
-		return card;
-	}
+        //card with image for successful output
+	private static StandardCard buildCard(String text, String locationLat, String locationLong, double stopLat, double stopLon) {
+            StandardCard card = new StandardCard();
+            card.setTitle("Pittsburgh Port Authority");
+            card.setText(text);
+            Image image = new Image();
+            image.setLargeImageUrl(buildImageURL(locationLat, locationLong, stopLat, stopLon));
+            card.setImage(image);
+            return card;
+        }
+        //Simple card for failure scenarios
+        private static SimpleCard buildCard(String s) {
+        SimpleCard card = new SimpleCard();
+        card.setTitle("Pittsburgh Port Authority");
+        card.setContent(s);
+        return card;
+     }
+    
+    private static String buildImageURL(String locationLat, String locationLong, double stopLat, double stopLon) {
+        //Example: "https://maps.googleapis.com/maps/api/staticmap?size=600x300&maptype=roadmap&key=AIzaSyAOTkkr2SDnAQi8-fohOn4rUinICd-pHVA&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:1%7C40.4390895,-80.0108302&markers=size:mid%7Ccolor:0xff0000%7Clabel:2%7C40.4418137,-80.0077432"
+        String url = "https://maps.googleapis.com/maps/api/staticmap?size=1000x700&maptype=roadmap&key=AIzaSyAOTkkr2SDnAQi8-fohOn4rUinICd-pHVA&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:1%" + locationLat + "," + locationLong + "&markers=size:mid%7Ccolor:0xff0000%7Clabel:2%7C" + stopLat + "," + stopLon;
+        return url;
+    }
 
 
 
