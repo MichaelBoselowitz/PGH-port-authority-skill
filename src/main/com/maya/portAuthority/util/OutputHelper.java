@@ -1,9 +1,15 @@
 package com.maya.portAuthority.util;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import org.json.JSONException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.amazon.speech.speechlet.SpeechletResponse;
+import com.amazon.speech.ui.Card;
 import com.amazon.speech.ui.Image;
 import com.amazon.speech.ui.PlainTextOutputSpeech;
 import com.amazon.speech.ui.Reprompt;
@@ -11,11 +17,16 @@ import com.amazon.speech.ui.SimpleCard;
 import com.amazon.speech.ui.SsmlOutputSpeech;
 import com.amazon.speech.ui.StandardCard;
 import com.maya.portAuthority.GetNextBusSpeechlet;
+import com.maya.portAuthority.googleMaps.Instructions;
+import com.maya.portAuthority.googleMaps.NearestStopLocator;
 import com.maya.portAuthority.storage.PaInputData;
+import com.sun.org.apache.bcel.internal.generic.Instruction;
 
 
 
 public class OutputHelper {
+	private final static Logger LOGGER = LoggerFactory.getLogger("OutputHelper");
+	
 	private static String SPEECH_WELCOME = "Welcome to "+GetNextBusSpeechlet.INVOCATION_NAME;
 
 	public static final String AUDIO_WELCOME = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_welcome.mp3\" />";
@@ -154,7 +165,16 @@ public class OutputHelper {
 			speechOutput+=HELP_ALL_ROUTES_SPEECH;
 		}
 		outputSpeech.setSsml("<speak> " + AUDIO_SUCCESS + speechOutput + "</speak>");
-		return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput, inputData.getLocationLat(), inputData.getLocationLong(), inputData.getStopLat(), inputData.getStopLon()));
+		Card card;
+		
+		try {
+			card = buildCard(textOutput, inputData.getLocationLat(), inputData.getLocationLong(), inputData.getStopLat(), inputData.getStopLon());
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage());
+			card= buildCard(textOutput);
+		}
+		
+		return SpeechletResponse.newTellResponse(outputSpeech, card);
 	}
 	/**
 	 * @param s
@@ -167,10 +187,10 @@ public class OutputHelper {
 		return card;
 	}
         //card with image for successful output
-	private static StandardCard buildCard(String text, String locationLat, String locationLong, double stopLat, double stopLon) {
+	private static StandardCard buildCard(String text, String locationLat, String locationLong, double stopLat, double stopLon) throws IOException, JSONException, Exception {
             StandardCard card = new StandardCard();
             card.setTitle("Pittsburgh Port Authority");
-            card.setText(text);
+            card.setText(text+"\n"+buildDirections(locationLat, locationLong, stopLat, stopLon));
             Image image = new Image();
             image.setLargeImageUrl(buildImageURL(locationLat, locationLong, stopLat, stopLon));
             card.setImage(image);
@@ -184,8 +204,11 @@ public class OutputHelper {
         return url;
     }
 
-
-
+    private static String buildDirections(String locationLat, String locationLon, double stopLat, double stopLon) throws IOException, JSONException, Exception{	
+    	return Instructions.getInstructions(NearestStopLocator.getDirections(locationLat, locationLon, stopLat, stopLon));
+   // https://maps.googleapis.com/maps/api/directions/json?origin=40.4413962,-80.0035603&destination=40.4332551,-79.9257867&mode=walk&transit_mode=walking&key=AIzaSyBzW19DGDOi_20t46SazRquCLw9UNp_C8s
+    }
+    
 	/**
 	 * Wrapper for creating the Ask response from the input strings.
 

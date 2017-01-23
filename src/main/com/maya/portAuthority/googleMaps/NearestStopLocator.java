@@ -23,15 +23,28 @@ import com.maya.portAuthority.api.TrueTimeAPI;
 
 /**
  */
+//TODO Change Name of this class
 public class NearestStopLocator {
 
 	private static Logger log = LoggerFactory.getLogger(NearestStopLocator.class);
 
 	private static final String TEXT_SEARCH_URL="https://maps.googleapis.com/maps/api/place/textsearch/json";
 	private static final String DISTANCE_MATRIX_URL="https://maps.googleapis.com/maps/api/distancematrix/json";
+	private static final String DIRECTIONS_URL= "https://maps.googleapis.com/maps/api/directions/json?origin=%s,%s&destination=%f,%f&mode=walk&transit_mode=walking&key=%s";
+	    
 	private static final String GOOGLE_MAPS_KEY="AIzaSyBzW19DGDOi_20t46SazRquCLw9UNp_C8s";
 
 
+	/**
+	 * TODO Change Name of this method
+	 * @param source
+	 * @param routeID
+	 * @param direction
+	 * @return
+	 * @throws IOException
+	 * @throws JSONException
+	 * @throws InvalidInputException
+	 */
 	public static Stop process(Location source, String routeID, String direction) throws IOException, JSONException, InvalidInputException{
 		log.trace("Process: source={}, routeId={}, direction={}", source, routeID, direction);
 		if ((source==null)||(routeID==null)||(direction==null)){
@@ -79,6 +92,10 @@ public class NearestStopLocator {
 		return listOfLocationCoordinates;
 	}
 
+	public static JSONObject getDirections(String locationLat, String locationLng, double stopLat, double stopLng )throws IOException, JSONException{
+		return JsonUtils.readJsonFromUrl(String.format(DIRECTIONS_URL,locationLat,locationLng,stopLat, stopLng, GOOGLE_MAPS_KEY ));
+	}
+	
 	/**
 	 * @deprecated
 	 * Gets list of stops for a route#
