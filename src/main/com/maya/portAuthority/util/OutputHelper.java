@@ -9,7 +9,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.amazon.speech.speechlet.SpeechletResponse;
+<<<<<<< HEAD
 import com.amazon.speech.ui.Card;
+=======
+>>>>>>> origin/master
 import com.amazon.speech.ui.Image;
 import com.amazon.speech.ui.PlainTextOutputSpeech;
 import com.amazon.speech.ui.Reprompt;
@@ -165,6 +168,7 @@ public class OutputHelper {
 			speechOutput+=HELP_ALL_ROUTES_SPEECH;
 		}
 		outputSpeech.setSsml("<speak> " + AUDIO_SUCCESS + speechOutput + "</speak>");
+<<<<<<< HEAD
 		Card card;
 		
 		try {
@@ -191,12 +195,31 @@ public class OutputHelper {
             StandardCard card = new StandardCard();
             card.setTitle("Pittsburgh Port Authority");
             card.setText(text+"\n"+buildDirections(locationLat, locationLong, stopLat, stopLon));
+=======
+		return SpeechletResponse.newTellResponse(outputSpeech, buildCard(textOutput, inputData.getLocationLat(), inputData.getLocationLong(), inputData.getStopLat(), inputData.getStopLon()));
+	}
+        //card with image for successful output
+	private static StandardCard buildCard(String text, String locationLat, String locationLong, double stopLat, double stopLon) {
+            StandardCard card = new StandardCard();
+            card.setTitle("Pittsburgh Port Authority");
+            card.setText(text);
+>>>>>>> origin/master
             Image image = new Image();
             image.setLargeImageUrl(buildImageURL(locationLat, locationLong, stopLat, stopLon));
             card.setImage(image);
             return card;
         }
+<<<<<<< HEAD
 
+=======
+        //Simple card for failure scenarios
+        private static SimpleCard buildCard(String s) {
+        SimpleCard card = new SimpleCard();
+        card.setTitle("Pittsburgh Port Authority");
+        card.setContent(s);
+        return card;
+     }
+>>>>>>> origin/master
     
     private static String buildImageURL(String locationLat, String locationLong, double stopLat, double stopLon) {
         //Example: "https://maps.googleapis.com/maps/api/staticmap?size=600x300&maptype=roadmap&key=AIzaSyAOTkkr2SDnAQi8-fohOn4rUinICd-pHVA&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:1%7C40.4390895,-80.0108302&markers=size:mid%7Ccolor:0xff0000%7Clabel:2%7C40.4418137,-80.0077432"
@@ -204,11 +227,16 @@ public class OutputHelper {
         return url;
     }
 
+<<<<<<< HEAD
     private static String buildDirections(String locationLat, String locationLon, double stopLat, double stopLon) throws IOException, JSONException, Exception{	
     	return Instructions.getInstructions(NearestStopLocator.getDirections(locationLat, locationLon, stopLat, stopLon));
    // https://maps.googleapis.com/maps/api/directions/json?origin=40.4413962,-80.0035603&destination=40.4332551,-79.9257867&mode=walk&transit_mode=walking&key=AIzaSyBzW19DGDOi_20t46SazRquCLw9UNp_C8s
     }
     
+=======
+
+
+>>>>>>> origin/master
 	/**
 	 * Wrapper for creating the Ask response from the input strings.
 
