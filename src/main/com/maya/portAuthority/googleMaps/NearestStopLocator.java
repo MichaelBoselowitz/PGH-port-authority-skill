@@ -31,7 +31,7 @@ public class NearestStopLocator {
 
     private static final String TEXT_SEARCH_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json";
     private static final String DISTANCE_MATRIX_URL = "https://maps.googleapis.com/maps/api/distancematrix/json";
-    private static final String DIRECTIONS_URL = "https://maps.googleapis.com/maps/api/directions/json?origin=%s,%s&destination=%f,%f&mode=walk&transit_mode=walking&key=%s";
+    private static final String DIRECTIONS_URL = "https://maps.googleapis.com/maps/api/directions/json?origin=%s,%s&destination=%f,%f&mode=walking&key=%s";
 
     private static final String GOOGLE_MAPS_KEY = "AIzaSyBzW19DGDOi_20t46SazRquCLw9UNp_C8s";
 
