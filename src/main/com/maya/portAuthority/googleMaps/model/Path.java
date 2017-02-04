@@ -121,8 +121,9 @@ public class Path {
         StringBuilder strB = new StringBuilder();
         for (Point point : path) {
             strB.append(point.toString());
+            strB.append("|");
             strB.append(point.toString());
-            strB.append(",");
+            strB.append("|");
         }
         return strB.toString();
     }
