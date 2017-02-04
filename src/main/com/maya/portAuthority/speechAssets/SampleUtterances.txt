@@ -4,12 +4,14 @@ AllBusRoutesIntent all bus routes for this station
 
 ResetBusIntent reset history
 
-OneshotBusIntent when is 
-OneshotBusIntent when is the next bus
-OneshotBusIntent bus information
 OneshotBusIntent when is the {Direction} {Route} 
 OneshotBusIntent when is the {Direction} {Route} arriving at {Location}
-
+OneshotBusIntent when the {Direction} {Route} is
+OneshotBusIntent when the {Direction} {Route} is arriving at {Location} 
+OneshotBusIntent when is the next {Direction} {Route} 
+OneshotBusIntent when is the next {Direction} {Route} arriving at {Location}
+OneshotBusIntent when the next {Direction} {Route} is
+OneshotBusIntent when the next {Direction} {Route} is arriving at {Location} 
 
 DirectionBusIntent {Direction}
 DirectionBusIntent {Direction} downtown
