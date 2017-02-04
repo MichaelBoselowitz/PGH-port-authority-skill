@@ -104,5 +104,13 @@ public class Direction {
 		}
 		return sb.toString();
 	}
+        
+         public String getPoints() {
+		StringBuilder sb = new StringBuilder();
+		for (Legs legs : legsList) {
+			sb.append(legs.getWayPoints());
+		}
+		return sb.toString();
+	}
 
 }

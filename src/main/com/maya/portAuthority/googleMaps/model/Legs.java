@@ -117,4 +117,12 @@ import java.util.List;
 		}
 		return strB.toString();
 	}
+        
+        public String getWayPoints(){
+		StringBuilder strB=new StringBuilder();
+		for(Path path:pathsList) {
+			strB.append(path.printPoints());
+		}
+		return strB.toString();
+        }
 }

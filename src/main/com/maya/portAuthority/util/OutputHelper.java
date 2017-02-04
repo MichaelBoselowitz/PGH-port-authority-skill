@@ -20,6 +20,7 @@ import com.maya.portAuthority.GetNextBusSpeechlet;
 import com.maya.portAuthority.googleMaps.Instructions;
 import com.maya.portAuthority.googleMaps.NearestStopLocator;
 import com.maya.portAuthority.storage.PaInputData;
+import org.json.JSONObject;
 
 
 public class OutputHelper {
@@ -75,10 +76,13 @@ public class OutputHelper {
 	 * Speech fragment with instructions to hear all routes.
 	 */
 	private static final String HELP_ALL_ROUTES_SPEECH=CHANGE_MARKER+"to hear predictions for all routes that stop there, say <break time=\"0.25s\" /> Alexa, ask "+GetNextBusSpeechlet.INVOCATION_NAME+" for All Routes";
+        /**
+         * 
+         * 
+         */
+        private static final String MAPS_IMAGE_URL = "https://maps.googleapis.com/maps/api/staticmap?size=1200x800&maptype=roadmap&key=%s&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:1%7C%s,%s&markers=size:mid%7Ccolor:0xff0000%7Clabel:2%7C%s,%s&path=color:0x0000ff|weight:5|%s";
 
-	
-
-
+        private static final String GOOGLE_MAPS_KEY = "AIzaSyAOTkkr2SDnAQi8-fohOn4rUinICd-pHVA";
 
 	//	public static SpeechletResponse getNoResponse(PaInputData inputData) {
 	//		return getNoResponse(inputData, "");
@@ -174,10 +178,8 @@ public class OutputHelper {
 		
 		return SpeechletResponse.newTellResponse(outputSpeech, card);
 	}
-	/**
-	 * @param s
-	 * @return
-	 */
+        
+	//card for error output
 	private static SimpleCard buildCard(String s){
 		SimpleCard card=new SimpleCard();
 		card.setTitle(GetNextBusSpeechlet.INVOCATION_NAME);
@@ -187,25 +189,28 @@ public class OutputHelper {
         //card with image for successful output
 	private static StandardCard buildCard(String text, String locationLat, String locationLong, double stopLat, double stopLon) throws IOException, JSONException, Exception {
             StandardCard card = new StandardCard();
+            Navigation navigation = buildNavigation(locationLat, locationLong, stopLat, stopLon);
             card.setTitle("Pittsburgh Port Authority");
-            card.setText(text+"\n"+buildDirections(locationLat, locationLong, stopLat, stopLon));
+            card.setText(text+"\n"+navigation.getInstructions());
             Image image = new Image();
-            image.setLargeImageUrl(buildImageURL(locationLat, locationLong, stopLat, stopLon));
+            image.setLargeImageUrl(navigation.getImage());
             card.setImage(image);
             return card;
         }
 
-    
-    private static String buildImageURL(String locationLat, String locationLong, double stopLat, double stopLon) {
-        //Example: "https://maps.googleapis.com/maps/api/staticmap?size=600x300&maptype=roadmap&key=AIzaSyAOTkkr2SDnAQi8-fohOn4rUinICd-pHVA&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:1%7C40.4390895,-80.0108302&markers=size:mid%7Ccolor:0xff0000%7Clabel:2%7C40.4418137,-80.0077432"
-        String url = "https://maps.googleapis.com/maps/api/staticmap?size=1000x700&maptype=roadmap&key=AIzaSyAOTkkr2SDnAQi8-fohOn4rUinICd-pHVA&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:1%" + locationLat + "," + locationLong + "&markers=size:mid%7Ccolor:0xff0000%7Clabel:2%7C" + stopLat + "," + stopLon;
-        return url;
+    private static Navigation buildNavigation(String locationLat, String locationLon, double stopLat, double stopLon) throws IOException, JSONException, Exception{	
+        Navigation navigation = new Navigation();
+    	JSONObject json = NearestStopLocator.getDirections(locationLat, locationLon, stopLat, stopLon);
+        String instructions = Instructions.getInstructions(json);
+        String image = "https://maps.googleapis.com/maps/api/staticmap?size=1200x800&maptype=roadmap&key="+GOOGLE_MAPS_KEY+"&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:1%7C" + locationLat + "," + locationLon + "&markers=size:mid%7Ccolor:0xff0000%7Clabel:2%7C" + stopLat + "," + stopLon+"&path=color:0x0000ff|weight:5|"+Instructions.printWayPoints(json);
+        image = image.substring(0, image.length() -1); //Remove the last '|'
+        //LOGGER.info("IMAGE URL: "+String.format(MAPS_IMAGE_URL,GOOGLE_MAPS_KEY,locationLat,locationLon,stopLat,stopLon,Instructions.printWayPoints(json)));
+        //String.format(MAPS_IMAGE_URL,GOOGLE_MAPS_KEY,locationLat,locationLon,stopLat,stopLon,Instructions.printWayPoints(json) )
+        navigation.setInstructions(instructions);
+        navigation.setImage(image);
+        return navigation;
     }
 
-    private static String buildDirections(String locationLat, String locationLon, double stopLat, double stopLon) throws IOException, JSONException, Exception{	
-    	return Instructions.getInstructions(NearestStopLocator.getDirections(locationLat, locationLon, stopLat, stopLon));
-   // https://maps.googleapis.com/maps/api/directions/json?origin=40.4413962,-80.0035603&destination=40.4332551,-79.9257867&mode=walk&transit_mode=walking&key=AIzaSyBzW19DGDOi_20t46SazRquCLw9UNp_C8s
-    }
 
 	/**
 	 * Wrapper for creating the Ask response from the input strings.

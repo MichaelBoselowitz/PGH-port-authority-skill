@@ -31,6 +31,7 @@ public class Instructions {
 	// https://maps.googleapis.com/maps/api/directions/json?origin=40.4413962,-80.0035603&destination=40.4332551,-79.9257867&mode=walk&transit_mode=walking&key=AIzaSyBzW19DGDOi_20t46SazRquCLw9UNp_C8s
 
 	private final static Logger LOGGER = LoggerFactory.getLogger("Instructions");
+        
 
 	/**
 	 * Receives a JSONObject and returns a Direction
@@ -130,6 +131,16 @@ public class Instructions {
 		}
 		return sb.toString();
 	}
+        
+        public static String printWayPoints(JSONObject obj) throws Exception {
+		List<Direction> listOfDirections = new ArrayList<>();
+		listOfDirections = parse(obj);
+		StringBuilder sb = new StringBuilder();
+		for (Direction dir : listOfDirections) {
+			sb.append(dir.getPoints());
+		}
+		return sb.toString();
+	}
 
 	/**
 	 * Method to decode polyline points Source:
@@ -173,7 +184,7 @@ public class Instructions {
 		try {
 			String line;
 			// To test: Store JSON by striking
-			// https://maps.googleapis.com/maps/api/directions/json?origin=40.4413962,-80.0035603&destination=40.4332551,-79.9257867&mode=walk&transit_mode=walking&key=AIzaSyBzW19DGDOi_20t46SazRquCLw9UNp_C8s
+			// https://maps.googleapis.com/maps/api/directions/json?origin=40.4419433,-80.00331349999999&destination=40.44088273536,-80.000846662042&mode=walk&transit_mode=walking&key=AIzaSyBzW19DGDOi_20t46SazRquCLw9UNp_C8s
 			// in a file, and provide file location below:
 			br = new BufferedReader(new FileReader("C:\\Users\\Adithya\\Desktop\\testjson.txt"));
 			while ((line = br.readLine()) != null) {
@@ -192,6 +203,7 @@ public class Instructions {
 		// System.out.println("File Content: \n" + jsonData);
 		JSONObject obj = new JSONObject(jsonData);
 		System.out.println(Instructions.getInstructions(obj));
+                System.out.println(Instructions.printWayPoints(obj));
 
 	}
 }
