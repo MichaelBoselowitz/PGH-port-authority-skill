@@ -76,13 +76,7 @@ public class OutputHelper {
 	 * Speech fragment with instructions to hear all routes.
 	 */
 	private static final String HELP_ALL_ROUTES_SPEECH=CHANGE_MARKER+"to hear predictions for all routes that stop there, say <break time=\"0.25s\" /> Alexa, ask "+GetNextBusSpeechlet.INVOCATION_NAME+" for All Routes";
-        /**
-         * 
-         * 
-         */
-        private static final String MAPS_IMAGE_URL = "https://maps.googleapis.com/maps/api/staticmap?size=1200x800&maptype=roadmap&key=%s&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:1%7C%s,%s&markers=size:mid%7Ccolor:0xff0000%7Clabel:2%7C%s,%s&path=color:0x0000ff|weight:5|%s";
-
-        private static final String GOOGLE_MAPS_KEY = "AIzaSyAOTkkr2SDnAQi8-fohOn4rUinICd-pHVA";
+       
 
 	//	public static SpeechletResponse getNoResponse(PaInputData inputData) {
 	//		return getNoResponse(inputData, "");
@@ -202,10 +196,8 @@ public class OutputHelper {
         Navigation navigation = new Navigation();
     	JSONObject json = NearestStopLocator.getDirections(locationLat, locationLon, stopLat, stopLon);
         String instructions = Instructions.getInstructions(json);
-        String image = "https://maps.googleapis.com/maps/api/staticmap?size=1200x800&maptype=roadmap&key="+GOOGLE_MAPS_KEY+"&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:1%7C" + locationLat + "," + locationLon + "&markers=size:mid%7Ccolor:0xff0000%7Clabel:2%7C" + stopLat + "," + stopLon+"&path=color:0x0000ff|weight:5|"+Instructions.printWayPoints(json);
+        String image = NearestStopLocator.buildImage(locationLat, locationLon, stopLat, stopLon) + Instructions.printWayPoints(json);
         image = image.substring(0, image.length() -1); //Remove the last '|'
-        //LOGGER.info("IMAGE URL: "+String.format(MAPS_IMAGE_URL,GOOGLE_MAPS_KEY,locationLat,locationLon,stopLat,stopLon,Instructions.printWayPoints(json)));
-        //String.format(MAPS_IMAGE_URL,GOOGLE_MAPS_KEY,locationLat,locationLon,stopLat,stopLon,Instructions.printWayPoints(json) )
         navigation.setInstructions(instructions);
         navigation.setImage(image);
         return navigation;
