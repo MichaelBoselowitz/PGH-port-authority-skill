@@ -157,9 +157,9 @@ public class OutputHelper {
 			prevRouteID=routeID;
 		}
 
-		if ((c.needsMoreHelp())&&(!c.isAllRoutes())){
-			speechOutput+=HELP_ALL_ROUTES_SPEECH;
-		}
+//		if ((c.needsMoreHelp())&&(!c.isAllRoutes())){
+//			speechOutput+=HELP_ALL_ROUTES_SPEECH;
+//		}
 		outputSpeech.setSsml("<speak> " + AUDIO_SUCCESS + speechOutput + "</speak>");
 		Card card;
 		
@@ -184,7 +184,7 @@ public class OutputHelper {
 	private static StandardCard buildCard(String text, String locationLat, String locationLong, double stopLat, double stopLon) throws IOException, JSONException, Exception {
             StandardCard card = new StandardCard();
             Navigation navigation = buildNavigation(locationLat, locationLong, stopLat, stopLon);
-            card.setTitle("Pittsburgh Port Authority");
+            card.setTitle(GetNextBusSpeechlet.INVOCATION_NAME);
             card.setText(text+"\n"+navigation.getInstructions());
             Image image = new Image();
             image.setLargeImageUrl(navigation.getImage());
@@ -193,13 +193,14 @@ public class OutputHelper {
         }
 
     private static Navigation buildNavigation(String locationLat, String locationLon, double stopLat, double stopLon) throws IOException, JSONException, Exception{	
-        Navigation navigation = new Navigation();
+    	Navigation navigation = new Navigation();
     	JSONObject json = NearestStopLocator.getDirections(locationLat, locationLon, stopLat, stopLon);
         String instructions = Instructions.getInstructions(json);
         String image = NearestStopLocator.buildImage(locationLat, locationLon, stopLat, stopLon) + Instructions.printWayPoints(json);
         image = image.substring(0, image.length() -1); //Remove the last '|'
         navigation.setInstructions(instructions);
         navigation.setImage(image);
+        //LOGGER.info("IMAGE URL={}",image);
         return navigation;
     }
 
