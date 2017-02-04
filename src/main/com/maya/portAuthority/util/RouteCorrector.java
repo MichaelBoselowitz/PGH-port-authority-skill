@@ -147,12 +147,24 @@ public class RouteCorrector {
     }
 
     public static String getRoute(String inputRoute) throws UnexpectedInputException{
+    	inputRoute = inputRoute.toUpperCase();
+    	inputRoute = removeIs(inputRoute);
     	inputRoute = inputRoute.replaceAll("\\s+", "");
-    	String output = expectedInputs.get(inputRoute.toUpperCase());
+    	
+    	String output = expectedInputs.get(inputRoute);
         if (output != null) {
         	return output;
         } else {
             throw new UnexpectedInputException ("Cannot find route " + inputRoute);
         }
+    }
+    
+    public static String removeIs (String inputRoute) {
+    	inputRoute = inputRoute.replace("YEARS", "");
+    	inputRoute = inputRoute.replace("NEWS", "");
+    	inputRoute = inputRoute.replace("S", "");
+    	inputRoute = inputRoute.replace("AND", "");
+    	inputRoute = inputRoute.replace("IN", "");
+    	return inputRoute;
     }
 }
