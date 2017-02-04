@@ -107,7 +107,7 @@ public class NearestStopLocator {
      * @throws JSONException
      *
      */
-	//    public static List<Stop> getStops(String routeID, String direction) throws IOException, JSONException{
+    //    public static List<Stop> getStops(String routeID, String direction) throws IOException, JSONException{
     //    	log.info("getStops: routeId={}, direction={}", routeID, direction);
     //    	//TODO: Move to TrueTimeMessageParser
     //    	String url =  "http://truetime.portauthority.org/bustime/api/v2/getstops?key=929FvbAPSEeyexCex5a7aDuus&rt="+routeID+"&dir="+direction.toUpperCase()+"&format=json";
@@ -132,19 +132,18 @@ public class NearestStopLocator {
 		//TODO Improve efficiency of findNearestStop
 
 		//        "rows": [ {
-		//            "elements": [ {
-		//              "status": "OK",
-		//              "duration": {
-		//                "value": 340110,
-		//                "text": "3 jours 22 heures"
-		//              },
-		//              "distance": {
-		//                "value": 1734542,
-		//                "text": "1 735 km"
-		//              }
-		//            }, 
-		//  
-
+        //            "elements": [ {
+        //              "status": "OK",
+        //              "duration": {
+        //                "value": 340110,
+        //                "text": "3 jours 22 heures"
+        //              },
+        //              "distance": {
+        //                "value": 1734542,
+        //                "text": "1 735 km"
+        //              }
+        //            }, 
+        //  
         List<Stop> nearestStops = new ArrayList<>();
         int numberOfBatches = 0;
         if (stops.size() % 25 == 0) {
@@ -152,7 +151,7 @@ public class NearestStopLocator {
         } else {
             numberOfBatches = stops.size() / 25 + 1;
         }
-        log.info("NUMBER OF STOPS: "+stops.size());
+        log.info("NUMBER OF STOPS: " + stops.size());
 
         /*
          index 0
@@ -166,15 +165,15 @@ public class NearestStopLocator {
         int currentbatch = 0;
         while (currentbatch < numberOfBatches) {
             List<Stop> currentBatchStops = new ArrayList<>();
-            String destinationString="";
+            String destinationString = "";
             for (int index = currentbatch * 25; index < (currentbatch + 1) * 25 && index < stops.size(); index++) {
                 destinationString += "|" + stops.get(index).getLatitude() + "," + stops.get(index).getLongitude();
                 currentBatchStops.add(stops.get(index));
             }
-            String url = DISTANCE_MATRIX_URL + "?origins=" + sourceLat + "," + sourceLon + "&destinations="+ destinationString.substring(1) + "&key=" + GOOGLE_MAPS_KEY + "&units=imperial&mode=walk&transit_mode=walking";
+            String url = DISTANCE_MATRIX_URL + "?origins=" + sourceLat + "," + sourceLon + "&destinations=" + destinationString.substring(1) + "&key=" + GOOGLE_MAPS_KEY + "&units=imperial&mode=walk&transit_mode=walking";
             log.info("DISTANCE MATRIX URL: " + url);
             Stop batchNearest = calculateShortestDistance(url, currentBatchStops);
-             log.info("{},{},{}:{},{}:{},{}", batchNearest.getStopName(), batchNearest.getDistance(), sourceLat, sourceLon, batchNearest.getLatitude(), batchNearest.getLongitude());
+            log.info("{},{},{}:{},{}:{},{}", batchNearest.getStopName(), batchNearest.getDistance(), sourceLat, sourceLon, batchNearest.getLatitude(), batchNearest.getLongitude());
             nearestStops.add(batchNearest);
             currentbatch++;
         }
@@ -197,7 +196,7 @@ public class NearestStopLocator {
             Stop stop = currentBatchStops.get(j);
             stop.setDistance(distanceJSON.getJSONObject(j).getJSONObject("distance").getDouble("value"));
             stop.setWalkTime(distanceJSON.getJSONObject(j).getJSONObject("duration").getString("value"));
-           // log.info("{},{},{}:{},{}:{},{}", stop.getStopName(), stop.getDistance(), sourceLat, sourceLon, stop.getLatitude(), stop.getLongitude());
+            // log.info("{},{},{}:{},{}:{},{}", stop.getStopName(), stop.getDistance(), sourceLat, sourceLon, stop.getLatitude(), stop.getLongitude());
         }
 
         Collections.sort(currentBatchStops);
@@ -222,9 +221,9 @@ public class NearestStopLocator {
 //		distance = distanceJSON.getJSONArray("rows").getJSONObject(0).getJSONArray("elements").getJSONObject(0).getJSONObject("distance").getString("text");
 //		return convertMileToFeet(distance);
 //	}
-
     /**
-     * *************************************Util methods**********************************************
+     * *************************************Util
+     * methods**********************************************
      */
     public static double convertMileToFeet(String distance) {
         log.info("convertMileToFeet: distance={}", distance);
@@ -240,4 +239,8 @@ public class NearestStopLocator {
         return result;
     }
 
+    public static String buildImage(String locationLat, String locationLon, double stopLat, double stopLon) {
+        String url = "https://maps.googleapis.com/maps/api/staticmap?size=1200x800&maptype=roadmap&key=" + GOOGLE_MAPS_KEY + "&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:1%7C" + locationLat + "," + locationLon + "&markers=size:mid%7Ccolor:0xff0000%7Clabel:2%7C" + stopLat + "," + stopLon + "&path=color:0x0000ff|weight:5|";
+        return url;
+    }
 }
