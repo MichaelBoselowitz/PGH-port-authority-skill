@@ -188,6 +188,7 @@ public class OutputHelper {
             card.setText(text+"\n"+navigation.getInstructions());
             Image image = new Image();
             image.setLargeImageUrl(navigation.getImage());
+            LOGGER.info("LARGE IMAGE URL: "+navigation.getImage());
             card.setImage(image);
             return card;
         }
@@ -198,8 +199,15 @@ public class OutputHelper {
         String instructions = Instructions.getInstructions(json);
         String image = NearestStopLocator.buildImage(locationLat, locationLon, stopLat, stopLon) + Instructions.printWayPoints(json);
         image = image.substring(0, image.length() -1); //Remove the last '|'
+        String imageName = locationLat+locationLon+stopLat+stopLon;
+        imageName = imageName.replaceAll("\\.", "");
+        ImageUploader.uploadImage(image, imageName);
+        LOGGER.info("UPLOAD IMAGE SUCCESSFUL WITH NAME: "+imageName);
+        
+       // String tinyURL = TinyURLGenerator.getTinyURL(image);
         navigation.setInstructions(instructions);
-        navigation.setImage(image);
+        navigation.setImage("https://s3.amazonaws.com/ppas-image-upload/image/"+ imageName+".png");
+        LOGGER.info("SET IMAGE SUCCESSFUL");
         //LOGGER.info("IMAGE URL={}",image);
         return navigation;
     }
