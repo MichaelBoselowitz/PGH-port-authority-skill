@@ -76,7 +76,8 @@ public class OutputHelper {
 	 * Speech fragment with instructions to hear all routes.
 	 */
 	private static final String HELP_ALL_ROUTES_SPEECH=CHANGE_MARKER+"to hear predictions for all routes that stop there, say <break time=\"0.25s\" /> Alexa, ask "+GetNextBusSpeechlet.INVOCATION_NAME+" for All Routes";
-       
+        private static final String S3_BUCKET = "ppas-image-upload-test1"; //S3 Bucket name
+        private static final String S3_FOLDER = "image"; //S3 Folder name
 
 	//	public static SpeechletResponse getNoResponse(PaInputData inputData) {
 	//		return getNoResponse(inputData, "");
@@ -197,16 +198,22 @@ public class OutputHelper {
     	Navigation navigation = new Navigation();
     	JSONObject json = NearestStopLocator.getDirections(locationLat, locationLon, stopLat, stopLon);
         String instructions = Instructions.getInstructions(json);
+        
+        //Set image URL
         String image = NearestStopLocator.buildImage(locationLat, locationLon, stopLat, stopLon) + Instructions.printWayPoints(json);
         image = image.substring(0, image.length() -1); //Remove the last '|'
+        
+        //Set image Name
         String imageName = locationLat+locationLon+stopLat+stopLon;
         imageName = imageName.replaceAll("\\.", "");
-        ImageUploader.uploadImage(image, imageName);
+        
+        //Upload image on S3
+        ImageUploader.uploadImage(image, imageName, S3_FOLDER, S3_BUCKET);
         LOGGER.info("UPLOAD IMAGE SUCCESSFUL WITH NAME: "+imageName);
         
-       // String tinyURL = TinyURLGenerator.getTinyURL(image);
+        //Set instructions and S3 image link to navigation object
         navigation.setInstructions(instructions);
-        navigation.setImage("https://s3.amazonaws.com/ppas-image-upload/image/"+ imageName+".png");
+        navigation.setImage("https://s3.amazonaws.com/"+S3_BUCKET+"/"+S3_FOLDER+"/"+ imageName+".png");
         LOGGER.info("SET IMAGE SUCCESSFUL");
         //LOGGER.info("IMAGE URL={}",image);
         return navigation;
