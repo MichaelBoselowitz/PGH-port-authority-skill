@@ -76,7 +76,7 @@ public class OutputHelper {
 	 * Speech fragment with instructions to hear all routes.
 	 */
 	private static final String HELP_ALL_ROUTES_SPEECH=CHANGE_MARKER+"to hear predictions for all routes that stop there, say <break time=\"0.25s\" /> Alexa, ask "+GetNextBusSpeechlet.INVOCATION_NAME+" for All Routes";
-        private static final String S3_BUCKET = "ppas-image-upload-test1"; //S3 Bucket name
+        private static final String S3_BUCKET = "steel-city-image-upload"; //S3 Bucket name
         private static final String S3_FOLDER = "image"; //S3 Folder name
 
 	//	public static SpeechletResponse getNoResponse(PaInputData inputData) {
