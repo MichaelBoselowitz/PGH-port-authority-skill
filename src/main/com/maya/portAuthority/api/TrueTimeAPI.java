@@ -24,13 +24,13 @@ import com.maya.portAuthority.util.JsonUtils;
 public class TrueTimeAPI extends BaseAPIParser {
 	private static  Logger log = LoggerFactory.getLogger(TrueTimeAPI.class);
 	public static final String TRUETIME_URL="http://truetime.portauthority.org/bustime/api/";
-	public static final String VERSION="v1/";
+	public static final String VERSION="v3/";
+	public static final String AGENCY="Port%20Authority%20Bus";
 	public static final String CMD_PREDICTION="getpredictions";
 	public static final String CMD_STOPS="getstops";
 	public static final String CMD_ROUTES="getroutes";
-	//public static final String PREDICTION_URL="http://truetime.portauthority.org/bustime/api/v1/getpredictions";
-	//public static final String STOPS_URL="http://truetime.portauthority.org/bustime/api/v1/getstops";
-	public static final String ACCESS_ID="cvTWAYXjbFEGcMSQbnv5tpteK";
+	//moved to lambda configuration properties
+	public static final String TRUETIME_ACCESS_ID=System.getenv("TRUETIME_ACCESS_ID");
 
 	public TrueTimeAPI() {
 		log.trace("constructor");
@@ -50,8 +50,9 @@ public class TrueTimeAPI extends BaseAPIParser {
 	 * lat- Latitude position of the stop in decimal degrees (WGS 84).
 	 * lon- Longitude position of the stop in decimal degrees (WGS 84).
 	 */
-	public static List<Message> getStops (String busline, String direction){
-		String apiString= TRUETIME_URL+VERSION+CMD_STOPS+"?key="+ACCESS_ID+"&rt="+busline+"&dir="+direction;
+	public static List<Message> getStops (String route, String direction){
+		//http://truetime.portauthority.org/bustime/api/v3/getdirections?key=2UfTSDVsRQTSWCke23DVcyviW&rtpidatafeed=Port%20Authority%20Bus&rt=67
+		String apiString= TRUETIME_URL+VERSION+CMD_STOPS+"?key="+TRUETIME_ACCESS_ID+"&rtpidatafeed="+AGENCY+"&rt="+route+"&dir="+direction;
 		log.debug("getStops:apiString="+apiString);
 		List<Message> messages=new ArrayList<Message>();
 		try {
@@ -70,16 +71,17 @@ public class TrueTimeAPI extends BaseAPIParser {
 	
     /**
      * Gets list of stops for a route#
-     * @param routeID
+     * @param route
      * @param direction
      * @return
      * @throws IOException
      * @throws JSONException 
      */
-    public static List<Stop> getStopsAsJson(String routeID, String direction) throws IOException, JSONException{
-    	log.trace("getStopsAsJson: routeId={}, direction={}", routeID, direction);
-    	String url =  "http://truetime.portauthority.org/bustime/api/v2/getstops?key=929FvbAPSEeyexCex5a7aDuus&rt="+routeID+"&dir="+direction.toUpperCase()+"&format=json";
-       JSONObject stopsJSON = null;
+    public static List<Stop> getStopsAsJson(String route, String direction) throws IOException, JSONException{
+    	log.trace("getStopsAsJson: route={}, direction={}", route, direction);
+    	//String url =  "http://truetime.portauthority.org/bustime/api/v2/getstops?key=929FvbAPSEeyexCex5a7aDuus&rt="+routeID+"&dir="+direction.toUpperCase()+"&format=json";
+    	String url= TRUETIME_URL+VERSION+CMD_STOPS+"?key="+TRUETIME_ACCESS_ID+"&rtpidatafeed="+AGENCY+"&rt="+route+"&dir="+direction.toUpperCase()+"&format=json";
+    	JSONObject stopsJSON = null;
        List<Stop> listOfStops = null;
        stopsJSON = JsonUtils.readJsonFromUrl(url);
        listOfStops = LocationTracker.getStopDetails(stopsJSON);
@@ -141,21 +143,34 @@ public class TrueTimeAPI extends BaseAPIParser {
 	 * tatripid -TA’s version of the scheduled trip identifier for the vehicle’s current trip.
 	 * zone- The zone name if the vehicle has entered a defined zones, otherwise blank.
 	 */
-	public static List<Message> getPredictions (String busline, String stationID){
+	public static List<Message> getPredictions (String route, String stationID){
 		List<Message> messages= new ArrayList<Message>();
-		String apiString= TRUETIME_URL+VERSION+CMD_PREDICTION+"?key="+ACCESS_ID+"&rt="+busline+"&stpid="+stationID;
-		log.debug("getPredictions:apiString="+apiString);
+		String apiString= TRUETIME_URL+VERSION+CMD_PREDICTION+"?key="+TRUETIME_ACCESS_ID+"&rtpidatafeed="+AGENCY+"&rt="+route+"&stpid="+stationID;
+		log.info("getPredictions:apiString="+apiString);
 
 		//TrueTimeMessageParser tester = new TrueTimeMessageParser(apiString);
 		try {
 			messages=TrueTimeAPI.parse(apiString);
-		} catch (IOException | SAXException | ParserConfigurationException e) {
+		} catch (IOException e) {
+			log.info("getPredictions:IOE:messages size"+messages.size());
 			messages.clear();
 			Message errorMsg=new Message();
-			errorMsg.setError(e.getMessage());
+			errorMsg.setError("IOException:"+e.getMessage());
+			messages.add(errorMsg);
+		} catch (SAXException saxe) {
+			log.info("getPredictions:SAXE:messages size"+messages.size());
+			messages.clear();
+			Message errorMsg=new Message();
+			errorMsg.setError("SAXException:"+saxe.getMessage());
+			messages.add(errorMsg);
+		} catch (ParserConfigurationException pce) {
+			log.info("getPredictions:PCE:messages size"+messages.size());
+			messages.clear();
+			Message errorMsg=new Message();
+			errorMsg.setError("ParserConfiguration:"+pce.getMessage());
 			messages.add(errorMsg);
 		}
-		log.debug("getPredictions:messages size"+messages.size());
+		
 		return messages;
 	}
 	
@@ -170,7 +185,7 @@ public class TrueTimeAPI extends BaseAPIParser {
 	
 	public static List<Message> getPredictions (String stationID, int maxValues){
 		List<Message> messages= new ArrayList<Message>();
-		String apiString= TRUETIME_URL+VERSION+CMD_PREDICTION+"?key="+ACCESS_ID+"&stpid="+stationID+"&top="+maxValues;
+		String apiString= TRUETIME_URL+VERSION+CMD_PREDICTION+"?key="+TRUETIME_ACCESS_ID+"&rtpidatafeed="+AGENCY+"&stpid="+stationID+"&top="+maxValues;
 		log.debug("getPredictions:apiString="+apiString);
 
 		//TrueTimeMessageParser tester = new TrueTimeMessageParser(apiString);
@@ -266,7 +281,8 @@ public class TrueTimeAPI extends BaseAPIParser {
 	 * rtdd	Child element of the route element. Language-specific route designator meant for display.
 	 */
 	public static List<Message> getRoutes(){
-		String apiString= TRUETIME_URL+VERSION+CMD_ROUTES+"?key="+ACCESS_ID;
+		////http://truetime.portauthority.org/bustime/api/v3/getroutes?key=2UfTSDVsRQTSWCke23DVcyviW&rtpidatafeed=Port%20Authority%20Bus&rt=67
+		String apiString= TRUETIME_URL+VERSION+CMD_ROUTES+"?key="+TRUETIME_ACCESS_ID+"&rtpidatafeed="+AGENCY;
 		log.debug("getRoutes:apiString="+apiString);
 		List<Message> messages=new ArrayList<Message>();
 		try {

@@ -207,6 +207,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 		}
 
 		List<Message> predictions = getPredictions(inputData);
+		log.info(predictions.toString());
 		// get speech response
 		return buildResponse(inputData, predictions);
 
@@ -264,7 +265,7 @@ public class GetNextBusSpeechlet implements Speechlet {
 			}
 
 			if ((messages.size() == 1) && (messages.get(0).getMessageType().equals(Message.ERROR))) {
-				log.error("1 error message:" + messages.get(0).getError());
+				log.error("1 error message:" + messages.get(0) + ":" + messages.get(0).getError());
 				analytics.postEvent(AnalyticsManager.CATEGORY_RESPONSE, "No Result", messages.get(0).getError(),
 						messages.size());
 				return OutputHelper.getNoResponse(inputData, skillContext);

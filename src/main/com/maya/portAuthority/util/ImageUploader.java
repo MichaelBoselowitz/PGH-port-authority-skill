@@ -36,14 +36,11 @@ public class ImageUploader {
         // credentials object identifying user for authentication
 
         AWSCredentials credentials = new BasicAWSCredentials(
-            "<Insert Access Key ID>", 
- 				"<Insert Secret Access Key>");
+            System.getenv("AWS_S3_ACCESS_KEY"), 
+            System.getenv("AWS_S3_SECRET_ACCESS_KEY"));
 
         // create a client connection based on credentials
         AmazonS3 s3client = new AmazonS3Client(credentials);
-
-       // String folderName = "image"; //folder name
-    //    String bucketName = "ppas-image-upload"; //must be unique
 
 
         try {

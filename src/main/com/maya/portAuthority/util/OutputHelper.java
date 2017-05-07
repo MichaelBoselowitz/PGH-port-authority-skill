@@ -24,13 +24,18 @@ import org.json.JSONObject;
 
 
 public class OutputHelper {
-	private final static Logger LOGGER = LoggerFactory.getLogger("OutputHelper");
 	
-	private static String SPEECH_WELCOME = "Welcome to "+GetNextBusSpeechlet.INVOCATION_NAME;
-
+	// CONFIGURE ME!
 	public static final String AUDIO_WELCOME = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_welcome.mp3\" />";
 	private static final String AUDIO_FAILURE = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_failure.mp3\" />";
 	private static final String AUDIO_SUCCESS = "<audio src=\"https://s3.amazonaws.com/maya-audio/ppa_success.mp3\" />";
+    private static final String S3_BUCKET = System.getenv("S3_BUCKET"); //S3 Bucket name
+    private static final String IMG_FOLDER = "image"; //S3 Folder name
+    
+    
+	private final static Logger LOGGER = LoggerFactory.getLogger("OutputHelper");
+	
+	private static String SPEECH_WELCOME = "Welcome to "+GetNextBusSpeechlet.INVOCATION_NAME;
 	
 	//TODO: add markers into conversation
 	private static final String CHANGE_MARKER=" <break time=\"0.5s\" /> By the way, ";
@@ -76,8 +81,7 @@ public class OutputHelper {
 	 * Speech fragment with instructions to hear all routes.
 	 */
 	private static final String HELP_ALL_ROUTES_SPEECH=CHANGE_MARKER+"to hear predictions for all routes that stop there, say <break time=\"0.25s\" /> Alexa, ask "+GetNextBusSpeechlet.INVOCATION_NAME+" for All Routes";
-        private static final String S3_BUCKET = "steel-city-image-upload"; //S3 Bucket name
-        private static final String S3_FOLDER = "image"; //S3 Folder name
+
 
 	//	public static SpeechletResponse getNoResponse(PaInputData inputData) {
 	//		return getNoResponse(inputData, "");
@@ -208,12 +212,12 @@ public class OutputHelper {
         imageName = imageName.replaceAll("\\.", "");
         
         //Upload image on S3
-        ImageUploader.uploadImage(image, imageName, S3_FOLDER, S3_BUCKET);
+        ImageUploader.uploadImage(image, imageName, IMG_FOLDER, S3_BUCKET);
         LOGGER.info("UPLOAD IMAGE SUCCESSFUL WITH NAME: "+imageName);
         
         //Set instructions and S3 image link to navigation object
         navigation.setInstructions(instructions);
-        navigation.setImage("https://s3.amazonaws.com/"+S3_BUCKET+"/"+S3_FOLDER+"/"+ imageName+".png");
+        navigation.setImage("https://s3.amazonaws.com/"+S3_BUCKET+"/"+IMG_FOLDER+"/"+ imageName+".png");
         LOGGER.info("SET IMAGE SUCCESSFUL");
         //LOGGER.info("IMAGE URL={}",image);
         return navigation;

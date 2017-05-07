@@ -33,8 +33,8 @@ public class NearestStopLocator {
     private static final String DISTANCE_MATRIX_URL = "https://maps.googleapis.com/maps/api/distancematrix/json";
     private static final String DIRECTIONS_URL = "https://maps.googleapis.com/maps/api/directions/json?origin=%s,%s&destination=%f,%f&mode=walking&key=%s";
 
-    private static final String GOOGLE_MAPS_KEY = "AIzaSyBhVvu-l0QfuLG-dub5c6neYJ7tHhtONNk";
-    private static final String STATIC_MAPS_KEY = "AIzaSyAOTkkr2SDnAQi8-fohOn4rUinICd-pHVA";
+    private static final String GOOGLE_MAPS_KEY = System.getenv("GOOGLE_MAPS_KEY");
+    private static final String STATIC_MAPS_KEY = System.getenv("STATIC_MAPS_KEY");
 
     /**
      * TODO Change Name of this method
