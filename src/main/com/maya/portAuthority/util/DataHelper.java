@@ -49,13 +49,6 @@ public class DataHelper {
 	public static final String ADDRESS = "address";
 	public static final String DIRECTION = "Direction";
 
-	// Voice
-	public static final String SPEECH_WELCOME = "Welcome to Pittsburgh Port Authority ";
-	public static final String ROUTE_PROMPT = "Which bus line would you like arrival information for?";
-	public static final String LOCATION_PROMPT = "Where are you now?";
-	public static final String DIRECTION_PROMPT = "In which direction are you <w role=\"ivona:NN\">traveling</w>?";
-	public static final String INTENT_HELP_PROMPT = "Use a complete sentence, like. I am currently outside Gateway Three";
-
 	public static final String LAST_QUESTION = "LastQuestion";
 
 	// private ArrayList<String> validIntents = null;
@@ -70,6 +63,9 @@ public class DataHelper {
 		validIntents.add(ROUTE_INTENT_NAME);
 		validIntents.add(LOCATION_INTENT_NAME);
 		validIntents.add(DIRECTION_INTENT_NAME);
+		validIntents.add("AMAZON.StopIntent");
+		validIntents.add("AMAZON.CancelIntent");
+		validIntents.add("AMAZON.HelpIntent");
 		return validIntents;
 	}
 
@@ -131,7 +127,7 @@ public class DataHelper {
 			} else {
 				log.info("Intent:" + intent.getName() + " direction is null");
 				throw new InvalidInputException("No Direction in Intent",
-						"Please repeat your direction. " + DIRECTION_PROMPT);
+						"Please repeat your direction. " + OutputHelper.DIRECTION_PROMPT);
 			}
 		}
 
@@ -140,7 +136,7 @@ public class DataHelper {
 			log.info("putting value in session Slot " + DIRECTION+" : "+direction);
 			session.setAttribute(DIRECTION, direction);
 		} catch (Exception e) {
-			throw new InvalidInputException(e.getMessage(), e, "Please repeat your direction. " + DIRECTION_PROMPT);
+			throw new InvalidInputException(e.getMessage(), e, "Please repeat your direction. " + OutputHelper.DIRECTION_PROMPT);
 		}
 
 		return "";
@@ -165,7 +161,7 @@ public class DataHelper {
 			} else {
 				log.info("Intent:" + intent.getName() + " location is null");
 				throw new InvalidInputException("No Location in Intent",
-						"Please repeat your location. " + LOCATION_PROMPT);
+						"Please repeat your location. " + OutputHelper.LOCATION_PROMPT);
 			}
 		}
 
@@ -186,10 +182,10 @@ public class DataHelper {
 
 		} catch (JSONException jsonE) {
 			throw new InvalidInputException("No Location in Intent", jsonE,
-					"Please repeat your location. " + LOCATION_PROMPT);
+					"Please repeat your location. " + OutputHelper.LOCATION_PROMPT);
 		} catch (IOException ioE) {
 			throw new InvalidInputException("Cannot reach Google Maps ", ioE,
-					"Please repeat your location. " + LOCATION_PROMPT);
+					"Please repeat your location. " + OutputHelper.LOCATION_PROMPT);
 		} catch (UnexpectedInputException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -215,7 +211,7 @@ public class DataHelper {
 				return "";
 			} else {
 				log.info("Intent:" + intent.getName() + " routeID is null");
-				throw new InvalidInputException("No routeID in Intent", "Please repeat your bus line. " + ROUTE_PROMPT);
+				throw new InvalidInputException("No routeID in Intent", "Please repeat your bus line. " + OutputHelper.ROUTE_PROMPT);
 			}
 		}
 
@@ -233,14 +229,14 @@ public class DataHelper {
 			String lastQuestion=DataHelper.getValueFromSession(session, DataHelper.LAST_QUESTION);
 			log.error("UnexpectedInputException:Message={}:LastQuestion={}",e.getMessage(),lastQuestion);
 			
-			if ((lastQuestion!=null)&&(lastQuestion.equals(DataHelper.LOCATION_PROMPT))){
-				throw new InvalidInputException(e.getMessage(), e, INTENT_HELP_PROMPT);
+			if ((lastQuestion!=null)&&(lastQuestion.equals(OutputHelper.LOCATION_PROMPT))){
+				throw new InvalidInputException(e.getMessage(), e, OutputHelper.HELP_INTENT);
 			}
-			throw new InvalidInputException(e.getMessage(), e, "Please repeat your bus line. " + ROUTE_PROMPT);
+			throw new InvalidInputException(e.getMessage(), e, "Please repeat your bus line. " + OutputHelper.ROUTE_PROMPT);
 			
 		} catch (APIException apiE) {
 			throw new InvalidInputException("Route does not match API",
-					"Could not find the bus line " + routeID + "." + ROUTE_PROMPT);
+					"Could not find the bus line " + routeID + "." + OutputHelper.ROUTE_PROMPT);
 		}
 
 		return route.getId() + "," + route.getName();

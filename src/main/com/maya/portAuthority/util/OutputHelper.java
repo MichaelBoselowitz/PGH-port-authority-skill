@@ -38,9 +38,26 @@ public class OutputHelper {
 	private static String SPEECH_WELCOME = "Welcome to "+GetNextBusSpeechlet.INVOCATION_NAME;
 	
 	//TODO: add markers into conversation
-	private static final String CHANGE_MARKER=" <break time=\"0.5s\" /> By the way, ";
+	private static final String CHANGE_MARKER=" , by the way, ";
 	private static final String SUCCESS_MARKER="okay, ";
 	private static final String FAILED_MARKER="oh, ";
+	
+	public static final String ROUTE_PROMPT = "Which bus line would you like arrival information for?";
+	public static final String HELP_ROUTE= "The Bus Line is usually a number, like sixty-seven, or a number and a letter, "
+			+ "like the seventy-one B , If you don't know what bus line you want, say, cancel, and go look it up on Google Maps";
+	
+	public static final String LOCATION_PROMPT = "Where are you now?";
+	public static final String HELP_LOCATION= "You can say a street address where you are, or a landmark near your bus stop , "
+			+ GetNextBusSpeechlet.INVOCATION_NAME+ " will figure out the closest stop to the location you give.";
+	
+	
+	public static final String DIRECTION_PROMPT = "In which direction are you <w role=\"ivona:NN\">traveling</w>?";
+	public static final String HELP_DIRECTION= "For busses headed <emphasis>towards</emphasis> "
+			+ "<phoneme alphabet=\"x-sampa\" ph=\"dAn tAn\">downtown</phoneme> ,"
+			+ "you can say, <phoneme alphabet=\"x-sampa\" ph=\"InbaUnd\">Inbound</phoneme> ,"
+			+ "or, for busses headed <emphasis>away</emphasis> from the city, say, Outbound";
+	
+	public static final String HELP_INTENT = "Use a complete sentence, like ,  I am currently outside Gateway Three";
 	
 	/**
 	 * Location Name, StopName
@@ -80,17 +97,37 @@ public class OutputHelper {
 	/**
 	 * Speech fragment with instructions to hear all routes.
 	 */
-	private static final String HELP_ALL_ROUTES_SPEECH=CHANGE_MARKER+"to hear predictions for all routes that stop there, say <break time=\"0.25s\" /> Alexa, ask "+GetNextBusSpeechlet.INVOCATION_NAME+" for All Routes";
+	private static final String HELP_ALL_ROUTES_SPEECH=CHANGE_MARKER+"to hear predictions for all routes that stop there, say , Alexa, ask "+GetNextBusSpeechlet.INVOCATION_NAME+" for All Routes";
+
+	/**
+	 * Speech fragment with generic instructions .
+	 */
+	private static final String HELP_SPEECH=GetNextBusSpeechlet.INVOCATION_NAME+" will tell you when the next bus is coming if you provide it a bus line, direction, and location near your bus stop.";
+	/**
+	 * Speech fragment for stopping or cancelling.
+	 */
+	private static final String STOP_SPEECH="Oh? OK";
 
 
 	//	public static SpeechletResponse getNoResponse(PaInputData inputData) {
 	//		return getNoResponse(inputData, "");
 	//	}
 
-	public static SpeechletResponse getWelcome(){
-		String output=AUDIO_WELCOME+" "+SPEECH_WELCOME + DataHelper.ROUTE_PROMPT;
+	public static SpeechletResponse getWelcomeResponse(){
+		String output=AUDIO_WELCOME+" "+SPEECH_WELCOME + ROUTE_PROMPT;
 		
-		return newAskResponse(output, DataHelper.ROUTE_PROMPT);
+		return newAskResponse(output, ROUTE_PROMPT);
+	}
+	
+	public static SpeechletResponse getHelpResponse(){
+		String output=AUDIO_WELCOME+" "+HELP_SPEECH + ROUTE_PROMPT;
+		
+		return newAskResponse(output, ROUTE_PROMPT);
+	}
+	
+	public static SpeechletResponse getStopResponse(){
+		
+		return newTellResponse(STOP_SPEECH);
 	}
 
 	public static SpeechletResponse getNoResponse(PaInputData inputData, SkillContext c) {
@@ -108,6 +145,7 @@ public class OutputHelper {
 
 		if ((c.needsMoreHelp())&&(!c.isAllRoutes())){
 			textOutput+=HELP_ALL_ROUTES_SPEECH;
+			
 		}
 
 		

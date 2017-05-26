@@ -71,8 +71,8 @@ public class GetNextBusSpeechlet implements Speechlet {
 		} else {
 			analytics.postEvent(AnalyticsManager.CATEGORY_LAUNCH, "Welcome");
 			//TODO: review whether this value should be placed in session by someone else. 
-			session.setAttribute(DataHelper.LAST_QUESTION, DataHelper.ROUTE_PROMPT);
-			return OutputHelper.getWelcome();
+			session.setAttribute(DataHelper.LAST_QUESTION, OutputHelper.ROUTE_PROMPT);
+			return OutputHelper.getWelcomeResponse();
 		}
 	}
 
@@ -103,6 +103,12 @@ public class GetNextBusSpeechlet implements Speechlet {
 			analytics.postEvent(AnalyticsManager.CATEGORY_INTENT, intent.getName());
 
 			switch (intent.getName()) {
+			case "AMAZON.StopIntent":
+				return OutputHelper.getStopResponse();
+			case "AMAZON.CancelIntent":
+				return OutputHelper.getStopResponse();
+			case "AMAZON.HelpIntent":
+				return OutputHelper.getHelpResponse();
 
 			case DataHelper.RESET_INTENT_NAME:
 				// Delete current record for this user

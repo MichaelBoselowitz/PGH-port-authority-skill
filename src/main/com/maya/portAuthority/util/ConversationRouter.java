@@ -22,18 +22,18 @@ public class ConversationRouter {
 
 		// Need Route, Location, and Direction
 		if (DataHelper.getValueFromSession(session, DataHelper.ROUTE_ID) == null) {
-			session.setAttribute(DataHelper.LAST_QUESTION, DataHelper.ROUTE_PROMPT);
-			return OutputHelper.newAskResponse(feedbackText + "," + DataHelper.ROUTE_PROMPT, DataHelper.ROUTE_PROMPT);
+			session.setAttribute(DataHelper.LAST_QUESTION, OutputHelper.ROUTE_PROMPT);
+			return OutputHelper.newAskResponse(feedbackText + "," + OutputHelper.ROUTE_PROMPT, OutputHelper.ROUTE_PROMPT);
 		}
 		if (DataHelper.getValueFromSession(session, DataHelper.DIRECTION) == null) {
-			session.setAttribute(DataHelper.LAST_QUESTION, DataHelper.DIRECTION_PROMPT);
-			return OutputHelper.newAskResponse(feedbackText + "," + DataHelper.DIRECTION_PROMPT,
-					DataHelper.DIRECTION_PROMPT);
+			session.setAttribute(DataHelper.LAST_QUESTION, OutputHelper.DIRECTION_PROMPT);
+			return OutputHelper.newAskResponse(feedbackText + "," + OutputHelper.DIRECTION_PROMPT,
+					OutputHelper.DIRECTION_PROMPT);
 		}
 		if (DataHelper.getValueFromSession(session, DataHelper.LOCATION) == null) {
-			session.setAttribute(DataHelper.LAST_QUESTION, DataHelper.LOCATION_PROMPT);
-			return OutputHelper.newAskResponse(feedbackText + "," + DataHelper.LOCATION_PROMPT,
-					DataHelper.LOCATION_PROMPT);
+			session.setAttribute(DataHelper.LAST_QUESTION, OutputHelper.LOCATION_PROMPT);
+			return OutputHelper.newAskResponse(feedbackText + "," + OutputHelper.LOCATION_PROMPT,
+					OutputHelper.LOCATION_PROMPT);
 		}
 
 		return null;
@@ -61,7 +61,7 @@ public class ConversationRouter {
 		String lastQuestion = DataHelper.getValueFromSession(session, DataHelper.LAST_QUESTION);
 
 		switch (lastQuestion) {
-		case DataHelper.ROUTE_PROMPT:
+		case OutputHelper.ROUTE_PROMPT:
 			// route is the first prompt, only route is acceptable
 			if (intent.getName() == DataHelper.ROUTE_INTENT_NAME) {
 				return true;
@@ -69,7 +69,7 @@ public class ConversationRouter {
 				return false;
 			}
 
-		case DataHelper.DIRECTION_PROMPT:
+		case OutputHelper.DIRECTION_PROMPT:
 			// might specify direction or might be trying to fix route
 			if (intent.getName() == DataHelper.DIRECTION_INTENT_NAME) {
 				return true;
@@ -78,7 +78,7 @@ public class ConversationRouter {
 			} else {
 				return false;
 			}
-		case DataHelper.LOCATION_PROMPT:
+		case OutputHelper.LOCATION_PROMPT:
 			// might be trying to specify location or fix direction
 			if (intent.getName() == DataHelper.LOCATION_INTENT_NAME) {
 				return true;
@@ -107,11 +107,11 @@ public class ConversationRouter {
 		String lastQuestion = DataHelper.getValueFromSession(session, DataHelper.LAST_QUESTION);
 		// first time through, make it a Route.
 		if (lastQuestion == null) {
-			lastQuestion = DataHelper.ROUTE_PROMPT;
+			lastQuestion = OutputHelper.ROUTE_PROMPT;
 		}
 
 		switch (lastQuestion) {
-		case DataHelper.ROUTE_PROMPT:
+		case OutputHelper.ROUTE_PROMPT:
 			if (!DataHelper.ROUTE_INTENT_NAME.equals(intent.getName())) {
 				// TODO: send to analytics
 				log.error("Forcing {} to be a Route Intent", intent.getName());
@@ -119,7 +119,7 @@ public class ConversationRouter {
 			feedback = DataHelper.putRouteValuesInSession(session, intent);
 			break;
 
-		case DataHelper.DIRECTION_PROMPT:
+		case OutputHelper.DIRECTION_PROMPT:
 			// might specify direction or might be trying to fix route
 			if (DataHelper.ROUTE_INTENT_NAME.equals(intent.getName())) {
 				feedback = DataHelper.putRouteValuesInSession(session, intent);
@@ -132,7 +132,7 @@ public class ConversationRouter {
 			feedback = DataHelper.putDirectionValuesInSession(session, intent);
 			break;
 
-		case DataHelper.LOCATION_PROMPT:
+		case OutputHelper.LOCATION_PROMPT:
 			// might be trying to specify location or fix direction
 			if (DataHelper.DIRECTION_INTENT_NAME.equals(intent.getName())) {
 				feedback = DataHelper.putDirectionValuesInSession(session, intent);
